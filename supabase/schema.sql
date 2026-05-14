@@ -78,3 +78,10 @@ $$ language plpgsql;
 create trigger progress_updated_at
   before update on progress
   for each row execute function update_updated_at();
+
+-- Allow anon to write explanations (needed for client-side caching)
+create policy "anon_insert_explanations" on word_explanations
+  for insert to anon with check (true);
+
+create policy "anon_update_explanations" on word_explanations
+  for update to anon using (true);
