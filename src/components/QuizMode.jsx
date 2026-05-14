@@ -1,0 +1,204 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { words, displayWord, CATEGORIES, CATEGORY_COLORS } from '../data/words'
+import { RATING, shuffle } from '../lib/srs'
+
+const QUIZ_SIZE = 20
+
+function buildQuiz(progressMap) {
+  // Mix known + unknown words for a balanced quiz
+  const pool = shuffle([...words]).slice(0, Math.min(100, words.length))
+  return pool.slice(0, QUIZ_SIZE)
+}
+
+function buildOptions(correct, allWords) {
+  // Pick 3 wrong answers from same category first, then any
+  const sameCat = allWords.filter(w => w.category === correct.category && w.id !== correct.id)
+  const others  = allWords.filter(w => w.category !== correct.category)
+  const pool    = shuffle([...sameCat, ...others])
+  const wrong   = pool.slice(0, 3)
+  return shuffle([correct, ...wrong])
+}
+
+export default function QuizMode({ progressMap, updateProgress }) {
+  const navigate  = useNavigate()
+  const [quiz, setQuiz]           = useState([])
+  const [index, setIndex]         = useState(0)
+  const [explanations, setExpls]  = useState({})
+  const [selected, setSelected]   = useState(null)   // chosen option id
+  const [score, setScore]         = useState({ correct: 0, wrong: 0 })
+  const [done, setDone]           = useState(false)
+  const [loadingExpl, setLoadExpl]= useState(false)
+
+  // Init quiz
+  useEffect(() => {
+    const q = buildQuiz(progressMap)
+    setQuiz(q)
+  }, [])
+
+  const current = quiz[index]
+
+  // Load explanation for current word when we get to it
+  useEffect(() => {
+    if (!current || explanations[current.id]) return
+    let cancelled = false
+    setLoadExpl(true)
+    fetch(`/api/explain?id=${current.id}&word=${encodeURIComponent(current.word)}&article=${current.article||''}&category=${current.category}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!cancelled) {
+          setExpls(prev => ({ ...prev, [current.id]: d.explanation || '—' }))
+          setLoadExpl(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setExpls(prev => ({ ...prev, [current.id]: '—' }))
+          setLoadExpl(false)
+        }
+      })
+    return () => { cancelled = true }
+  }, [current?.id])
+
+  const options = current ? buildOptions(current, words) : []
+
+  const handleSelect = async (option) => {
+    if (selected !== null) return
+    setSelected(option.id)
+
+    const isCorrect = option.id === current.id
+    setScore(s => ({
+      correct: s.correct + (isCorrect ? 1 : 0),
+      wrong:   s.wrong   + (isCorrect ? 0 : 1),
+    }))
+
+    // Update SRS
+    await updateProgress(current.id, isCorrect ? RATING.GOOD : RATING.AGAIN)
+
+    // Auto-advance after 1.5s
+    setTimeout(() => {
+      const next = index + 1
+      if (next >= quiz.length) {
+        setDone(true)
+      } else {
+        setIndex(next)
+        setSelected(null)
+      }
+    }, 1400)
+  }
+
+  const restart = () => {
+    setQuiz(buildQuiz(progressMap))
+    setIndex(0)
+    setSelected(null)
+    setScore({ correct: 0, wrong: 0 })
+    setDone(false)
+  }
+
+  // Done screen
+  if (done) {
+    const pct = Math.round((score.correct / QUIZ_SIZE) * 100)
+    return (
+      <div className="py-12 flex flex-col items-center gap-6 animate-fade-in text-center">
+        <div className="text-5xl">{pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪'}</div>
+        <div>
+          <h2 className="text-2xl font-bold text-stone-900">Тест завершён!</h2>
+          <p className="text-stone-500 mt-1">
+            Правильных ответов: <strong className="text-stone-800">{score.correct}</strong> из {QUIZ_SIZE} ({pct}%)
+          </p>
+        </div>
+        <div className="w-40 h-40 rounded-full border-8 border-stone-100 flex items-center justify-center"
+          style={{ borderTopColor: pct >= 60 ? '#22c55e' : '#C62828', borderRightColor: pct >= 60 ? '#22c55e' : '#C62828' }}>
+          <span className="text-4xl font-bold text-stone-800">{pct}%</span>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={restart} className="px-5 py-2.5 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 transition-colors">
+            Ещё раунд
+          </button>
+          <button onClick={() => navigate('/')} className="px-5 py-2.5 border border-stone-200 text-stone-600 rounded-lg font-medium hover:bg-stone-50 transition-colors">
+            На главную
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!current) {
+    return <div className="py-12 text-center text-stone-400">Загрузка теста…</div>
+  }
+
+  const catColor  = CATEGORY_COLORS[current.category]
+  const expl      = explanations[current.id]
+
+  return (
+    <div className="py-6 max-w-lg mx-auto animate-fade-in">
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={() => navigate('/')} className="text-stone-400 hover:text-stone-600 text-sm">← Назад</button>
+        <span className="text-sm text-stone-400 font-mono">{index + 1} / {QUIZ_SIZE}</span>
+        <div className="flex gap-3 text-xs font-medium">
+          <span className="text-green-600">{score.correct} ✓</span>
+          <span className="text-rose-500">{score.wrong} ✗</span>
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div className="h-1.5 bg-stone-100 rounded-full mb-6 overflow-hidden">
+        <div className="h-full bg-brand-500 rounded-full progress-fill" style={{ width: `${(index / QUIZ_SIZE) * 100}%` }} />
+      </div>
+
+      {/* Question: show explanation, pick the word */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-stone-400">Выберите слово</span>
+          <span className="text-xs px-2 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: catColor }}>
+            {CATEGORIES[current.category]}
+          </span>
+        </div>
+        <div className="min-h-[80px]">
+          {loadingExpl ? (
+            <div className="flex items-center gap-2 text-stone-400">
+              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              <span className="text-sm">Загрузка…</span>
+            </div>
+          ) : (
+            <p className="text-stone-700 leading-relaxed">{expl || '—'}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Options */}
+      <div className="grid grid-cols-2 gap-3">
+        {options.map(opt => {
+          const isCorrect = opt.id === current.id
+          const isChosen  = selected === opt.id
+          let cls = 'border-stone-200 bg-white text-stone-800 hover:border-stone-300 hover:bg-stone-50'
+
+          if (selected !== null) {
+            if (isCorrect) cls = 'border-green-400 bg-green-50 text-green-800'
+            else if (isChosen) cls = 'border-rose-400 bg-rose-50 text-rose-800'
+            else cls = 'border-stone-100 bg-stone-50 text-stone-400'
+          }
+
+          return (
+            <button
+              key={opt.id}
+              onClick={() => handleSelect(opt)}
+              disabled={selected !== null}
+              className={`p-4 rounded-xl border text-left font-medium transition-all active:scale-95 disabled:cursor-default ${cls}`}
+            >
+              <div className="text-lg font-bold leading-tight">{displayWord(opt)}</div>
+              <div className="text-xs mt-1 opacity-60">{CATEGORIES[opt.category]}</div>
+              {selected !== null && isCorrect && <div className="text-xs mt-1 text-green-600 font-semibold">✓ Правильно</div>}
+              {selected !== null && isChosen && !isCorrect && <div className="text-xs mt-1 text-rose-600 font-semibold">✗ Неверно</div>}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

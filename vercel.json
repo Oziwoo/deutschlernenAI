@@ -1,0 +1,6 @@
+{
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
+  "functions": {
+    "api/explain.js": { "maxDuration": 30 }
+  }
+}
