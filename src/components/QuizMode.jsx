@@ -1,25 +1,25 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { words, displayWord, CATEGORIES, CATEGORY_COLORS } from '../data/words'
+import { displayWord, CATEGORIES, CATEGORY_COLORS } from '../data/words'
 import { RATING, shuffle } from '../lib/srs'
 import { fetchExplanation } from '../lib/gemini'
 
 const QUIZ_SIZE = 20
 
-function buildQuiz() {
-  return shuffle([...words]).slice(0, QUIZ_SIZE)
+function buildQuiz(wordsList) {
+  return shuffle([...wordsList]).slice(0, QUIZ_SIZE)
 }
 
-function buildOptions(correct) {
-  const sameCat = words.filter(w => w.category === correct.category && w.id !== correct.id)
-  const others  = words.filter(w => w.category !== correct.category)
+function buildOptions(correct, wordsList) {
+  const sameCat = wordsList.filter(w => w.category === correct.category && w.id !== correct.id)
+  const others  = wordsList.filter(w => w.category !== correct.category)
   const pool    = shuffle([...sameCat, ...others])
   return shuffle([correct, ...pool.slice(0, 3)])
 }
 
-export default function QuizMode({ progressMap, updateProgress }) {
+export default function QuizMode({ progressMap, updateProgress, words }) {
   const navigate = useNavigate()
-  const [quiz, setQuiz]           = useState(() => buildQuiz())
+  const [quiz, setQuiz]           = useState(() => buildQuiz(words))
   const [index, setIndex]         = useState(0)
   const [explanations, setExpls]  = useState({})
   const [selected, setSelected]   = useState(null)
@@ -37,7 +37,7 @@ export default function QuizMode({ progressMap, updateProgress }) {
     return () => { cancelled = true }
   }, [current?.id])
 
-  const options = current ? buildOptions(current) : []
+  const options = current ? buildOptions(current, words) : []
 
   const handleSelect = async (option) => {
     if (selected !== null) return
@@ -53,7 +53,7 @@ export default function QuizMode({ progressMap, updateProgress }) {
   }
 
   const restart = () => {
-    setQuiz(buildQuiz())
+    setQuiz(buildQuiz(words))
     setIndex(0); setSelected(null)
     setScore({ correct:0, wrong:0 }); setDone(false)
   }
@@ -84,7 +84,7 @@ export default function QuizMode({ progressMap, updateProgress }) {
   const catColor = CATEGORY_COLORS[current.category]
   let expl     = explanations[current.id]
   
-  if (expl) {
+  if (expl && selected === null) {
     // Mask the current word in the explanation so it's not a dead giveaway
     // We escape the word first to avoid regex errors with special characters
     const escapedWord = current.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

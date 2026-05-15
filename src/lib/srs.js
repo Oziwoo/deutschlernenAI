@@ -104,11 +104,12 @@ export function shuffle(arr) {
   return arr
 }
 
-export function getStats(progressMap) {
+export function getStats(progressMap, words = []) {
   const values = Object.values(progressMap)
+  const totalWords = words.length > 0 ? words.length : 1000
   return {
-    total:    1000,
-    new:      1000 - values.length,
+    total:    totalWords,
+    new:      totalWords - values.length,
     learning: values.filter(p => p.status === STATUS.LEARNING).length,
     review:   values.filter(p => p.status === STATUS.REVIEW).length,
     mastered: values.filter(p => p.status === STATUS.MASTERED).length,

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { words, displayWord, CATEGORIES, CATEGORY_COLORS } from '../data/words'
+import { displayWord, CATEGORIES, CATEGORY_COLORS } from '../data/words'
 import { buildStudyQueue, RATING, STATUS } from '../lib/srs'
 import { fetchExplanation } from '../lib/gemini'
+import { speakGerman } from '../lib/tts'
 
 const RATINGS = [
   { value: RATING.AGAIN, label: 'Не знаю',  sub: 'Снова',    cls: 'border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30' },
@@ -21,7 +22,7 @@ function ArticleBadge({ article }) {
   )
 }
 
-export default function LearnMode({ progressMap, updateProgress }) {
+export default function LearnMode({ progressMap, updateProgress, words }) {
   const navigate = useNavigate()
   const [queue, setQueue]           = useState([])
   const [index, setIndex]           = useState(0)
@@ -125,7 +126,13 @@ export default function LearnMode({ progressMap, updateProgress }) {
           {/* Front */}
           <div className="flip-front absolute inset-0 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col items-center justify-center p-8 gap-4 transition-colors">
             <ArticleBadge article={currentWord.article} />
-            <div className="text-5xl font-bold text-stone-900 dark:text-white text-center leading-tight">{currentWord.word}</div>
+            <div className="flex items-center gap-3">
+              <div className="text-5xl font-bold text-stone-900 dark:text-white text-center leading-tight">{currentWord.word}</div>
+              <button onClick={(e) => { e.stopPropagation(); speakGerman(currentWord.word) }}
+                className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-xl transition-colors">
+                🔊
+              </button>
+            </div>
             <div className="text-sm text-stone-400 font-mono">#{currentWord.rank}</div>
             <div className="mt-2">
               {progress ? (
@@ -151,7 +158,13 @@ export default function LearnMode({ progressMap, updateProgress }) {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <ArticleBadge article={currentWord.article} />
-                <div className="text-2xl font-bold text-stone-900 dark:text-white mt-1">{currentWord.word}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="text-2xl font-bold text-stone-900 dark:text-white">{currentWord.word}</div>
+                  <button onClick={(e) => { e.stopPropagation(); speakGerman(currentWord.word) }}
+                    className="p-1.5 text-stone-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-lg transition-colors">
+                    🔊
+                  </button>
+                </div>
               </div>
               <span className="text-xs px-2 py-0.5 rounded-full text-white font-medium shrink-0 ml-2" style={{ backgroundColor: catColor }}>
                 {CATEGORIES[currentWord.category]}

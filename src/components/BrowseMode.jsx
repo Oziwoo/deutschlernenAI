@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from 'react'
-import { words, displayWord, CATEGORIES, CATEGORY_COLORS } from '../data/words'
+import { displayWord, CATEGORIES, CATEGORY_COLORS } from '../data/words'
 import { STATUS } from '../lib/srs'
 import { fetchExplanation } from '../lib/gemini'
+import { speakGerman } from '../lib/tts'
 
 const STATUS_LABELS = {
   new:      { label:'Новое',       cls:'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400'  },
@@ -38,6 +39,13 @@ function WordModal({ word, progress, onClose }) {
                 </span>
               )}
               <span className="text-2xl font-bold text-stone-900 dark:text-white">{word.word}</span>
+              <button 
+                onClick={(e) => { e.stopPropagation(); speakGerman(word.word) }}
+                className="p-1.5 text-stone-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-lg transition-colors"
+                title="Озвучить"
+              >
+                🔊
+              </button>
             </div>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <span className="text-xs px-2 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: catColor }}>
@@ -83,7 +91,7 @@ function WordModal({ word, progress, onClose }) {
   )
 }
 
-export default function BrowseMode({ progressMap }) {
+export default function BrowseMode({ progressMap, words }) {
   const [search, setSearch]         = useState('')
   const [catFilter, setCat]         = useState('all')
   const [statusFilter, setStatus]   = useState('all')

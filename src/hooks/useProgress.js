@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { calculateNext, getStats } from '../lib/srs'
 
-export function useProgress(sessionId, user) {
+export function useProgress(sessionId, user, words = []) {
   const [progressMap, setProgressMap] = useState({})   // wordId → record
   const [loading, setLoading]         = useState(true)
 
@@ -83,7 +83,7 @@ export function useProgress(sessionId, user) {
     }
   }, [sessionId, user, progressMap])
 
-  const stats = getStats(progressMap)
+  const stats = getStats(progressMap, words)
 
   return { progressMap, updateProgress, loading, stats }
 }

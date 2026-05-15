@@ -1,16 +1,19 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useSession }   from './hooks/useSession'
 import { useProgress }  from './hooks/useProgress'
+import { useWords }     from './hooks/useWords'
 import Navigation       from './components/Navigation'
 import Dashboard        from './components/Dashboard'
 import LearnMode        from './components/LearnMode'
 import QuizMode         from './components/QuizMode'
 import BrowseMode       from './components/BrowseMode'
+import SentenceBuilderMode from './components/SentenceBuilderMode'
 
 export default function App() {
   const { sessionId, user, loading: sessionLoading } = useSession()
+  const { words, fetchCustomWords } = useWords(sessionId, user)
   const { progressMap, updateProgress, loading: progressLoading, stats } =
-    useProgress(sessionId, user)
+    useProgress(sessionId, user, words)
 
   const isLoading = sessionLoading || progressLoading
 
@@ -33,18 +36,19 @@ export default function App() {
     )
   }
 
-  const shared = { sessionId, user, progressMap, updateProgress, stats }
+  const shared = { sessionId, user, progressMap, updateProgress, stats, words, fetchCustomWords }
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 transition-colors">
       <Navigation stats={stats} user={user} />
       <main className="max-w-4xl mx-auto px-4 pb-20">
         <Routes>
-          <Route path="/"       element={<Dashboard    {...shared} />} />
-          <Route path="/learn"  element={<LearnMode     {...shared} />} />
-          <Route path="/quiz"   element={<QuizMode      {...shared} />} />
-          <Route path="/browse" element={<BrowseMode    {...shared} />} />
-          <Route path="*"       element={<Navigate to="/" replace />} />
+          <Route path="/"                 element={<Dashboard    {...shared} />} />
+          <Route path="/learn"            element={<LearnMode     {...shared} />} />
+          <Route path="/sentence-builder" element={<SentenceBuilderMode {...shared} />} />
+          <Route path="/quiz"             element={<QuizMode      {...shared} />} />
+          <Route path="/browse"           element={<BrowseMode    {...shared} />} />
+          <Route path="*"                 element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>

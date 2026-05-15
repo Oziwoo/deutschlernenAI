@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { CATEGORIES, CATEGORY_COLORS } from '../data/words'
 import { STATUS } from '../lib/srs'
+import AddWordModal from './AddWordModal'
 
 function StatCard({ value, label, color }) {
   return (
@@ -31,12 +33,13 @@ function ActionButton({ onClick, icon, title, subtitle, accent }) {
   )
 }
 
-export default function Dashboard({ stats, progressMap }) {
+export default function Dashboard({ stats, progressMap, words, user, sessionId, fetchCustomWords }) {
   const navigate = useNavigate()
+  const [showAddWord, setShowAddWord] = useState(false) // later we'll use a modal
 
-  const pct     = Math.round((stats.mastered / 1000) * 100)
+  const pct     = Math.round((stats.mastered / stats.total) * 100) || 0
   const learnedTotal = stats.learning + stats.review + stats.mastered
-  const dueNow  = stats.dueToday + (1000 - learnedTotal > 0 ? Math.min(20, 1000 - learnedTotal) : 0)
+  const dueNow  = stats.dueToday + (stats.total - learnedTotal > 0 ? Math.min(20, stats.total - learnedTotal) : 0)
 
   // Category breakdown
   const catProgress = Object.values(CATEGORIES).map((name, i) => {
@@ -55,8 +58,8 @@ export default function Dashboard({ stats, progressMap }) {
         </h1>
         <p className="text-stone-500 dark:text-stone-400 mt-1 transition-colors">
           {learnedTotal === 0
-            ? '1000 самых важных слов немецкого языка'
-            : `Освоено ${learnedTotal} из 1000 слов · ${pct}%`}
+            ? `${stats.total} самых важных слов немецкого языка`
+            : `Освоено ${learnedTotal} из ${stats.total} слов · ${pct}%`}
         </p>
       </div>
 
@@ -64,22 +67,22 @@ export default function Dashboard({ stats, progressMap }) {
       <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-4 transition-colors">
         <div className="flex justify-between text-xs text-stone-400 mb-2">
           <span>Прогресс</span>
-          <span>{learnedTotal} / 1000</span>
+          <span>{learnedTotal} / {stats.total}</span>
         </div>
         <div className="h-3 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden flex">
           <div
             className="h-full bg-green-400 rounded-l-full progress-fill"
-            style={{ width: `${(stats.mastered / 1000) * 100}%` }}
+            style={{ width: `${(stats.mastered / stats.total) * 100}%` }}
             title="Усвоено"
           />
           <div
             className="h-full bg-blue-400 progress-fill"
-            style={{ width: `${(stats.review / 1000) * 100}%` }}
+            style={{ width: `${(stats.review / stats.total) * 100}%` }}
             title="На повторении"
           />
           <div
             className="h-full bg-amber-400 progress-fill"
-            style={{ width: `${(stats.learning / 1000) * 100}%` }}
+            style={{ width: `${(stats.learning / stats.total) * 100}%` }}
             title="Учится"
           />
         </div>
@@ -115,17 +118,31 @@ export default function Dashboard({ stats, progressMap }) {
           accent
         />
         <ActionButton
+          onClick={() => navigate('/sentence-builder')}
+          icon="🧩"
+          title="Собери предложение"
+          subtitle="Тренировка порядка слов и грамматики"
+        />
+        <ActionButton
           onClick={() => navigate('/quiz')}
           icon="⚡"
           title="Быстрый тест"
           subtitle="Выбери правильное слово из 4 вариантов"
         />
-        <ActionButton
-          onClick={() => navigate('/browse')}
-          icon="📖"
-          title="Все слова"
-          subtitle="Словарь с поиском и фильтрами"
-        />
+        <div className="grid grid-cols-2 gap-3">
+          <ActionButton
+            onClick={() => navigate('/browse')}
+            icon="📖"
+            title="Все слова"
+            subtitle="Поиск и фильтры"
+          />
+          <ActionButton
+            onClick={() => setShowAddWord(true)}
+            icon="➕"
+            title="Своё слово"
+            subtitle="Добавить в словарь"
+          />
+        </div>
       </div>
 
       {/* How it works */}
@@ -138,6 +155,15 @@ export default function Dashboard({ stats, progressMap }) {
             <li>• <strong>Прогресс</strong> — сохраняется автоматически, работает на любом устройстве</li>
           </ul>
         </div>
+      )}
+
+      {showAddWord && (
+        <AddWordModal 
+          onClose={() => setShowAddWord(false)} 
+          onAdd={fetchCustomWords} 
+          user={user} 
+          sessionId={sessionId} 
+        />
       )}
     </div>
   )
