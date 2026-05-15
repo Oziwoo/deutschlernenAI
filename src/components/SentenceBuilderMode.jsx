@@ -3,49 +3,38 @@ import { useNavigate } from 'react-router-dom'
 import { RATING, shuffle, buildStudyQueue } from '../lib/srs'
 import { speakGerman } from '../lib/tts'
 import { fetchSentence, checkSentence } from '../lib/gemini'
+import { useLanguage } from '../hooks/useLanguage'
+import { t } from '../i18n/translations'
 
 export default function SentenceBuilderMode({ words, progressMap, updateProgress }) {
   const navigate = useNavigate()
+  const { lang } = useLanguage()
   const [queue, setQueue] = useState([])
   const [index, setIndex] = useState(0)
-  
-  const [mode, setMode] = useState('blocks') // 'blocks' or 'free'
-  
+  const [mode, setMode] = useState('blocks')
   const [sentenceData, setSentenceData] = useState(null)
   const [loadingSentence, setLoadingSentence] = useState(false)
-  
-  // Blocks state
   const [availableBlocks, setAvailableBlocks] = useState([])
   const [selectedBlocks, setSelectedBlocks] = useState([])
   const [blockError, setBlockError] = useState(false)
-  
-  // Free mode state
   const [freeInput, setFreeInput] = useState('')
   const [feedback, setFeedback] = useState(null)
   const [loadingCheck, setLoadingCheck] = useState(false)
-  
   const [done, setDone] = useState(false)
   const [apiError, setApiError] = useState(false)
 
-  // Initialize queue
   useEffect(() => {
-    // Only take words that the user is learning or needs to review (or some new)
     const q = buildStudyQueue(words, progressMap, 10).slice(0, 10)
-    if (q.length === 0) {
-      setDone(true)
-    } else {
-      setQueue(q)
-    }
+    if (q.length === 0) setDone(true)
+    else setQueue(q)
   }, [words])
 
   const currentWord = queue[index]
 
-  // Fetch sentence
   useEffect(() => {
     if (!currentWord) return
     let cancelled = false
-
-    const loadSentence = async () => {
+    const load = async () => {
       setLoadingSentence(true)
       setSentenceData(null)
       setAvailableBlocks([])
@@ -54,18 +43,13 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
       setFreeInput('')
       setFeedback(null)
       setApiError(false)
-
       try {
         const data = await fetchSentence(currentWord.word)
         if (cancelled) return
-        
         setSentenceData(data)
-        
-        // Prepare blocks — strip trailing period so it's not a hint
         const tokens = data.german.replace(/[.!?]$/, '').split(' ').map(t => t.trim()).filter(Boolean)
         const shuffled = shuffle([...tokens].map((t, i) => ({ id: i, text: t })))
         setAvailableBlocks(shuffled)
-        
       } catch (err) {
         console.error('Sentence load error:', err)
         if (!cancelled) setApiError(true)
@@ -73,26 +57,19 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
         if (!cancelled) setLoadingSentence(false)
       }
     }
-
-    loadSentence()
+    load()
     return () => { cancelled = true }
   }, [currentWord])
 
   const nextQuestion = async (isCorrect) => {
-    if (currentWord) {
-      await updateProgress(currentWord.id, isCorrect ? RATING.GOOD : RATING.AGAIN)
-    }
+    if (currentWord) await updateProgress(currentWord.id, isCorrect ? RATING.GOOD : RATING.AGAIN)
     const nextIdx = index + 1
-    if (nextIdx >= queue.length) {
-      setDone(true)
-    } else {
-      setIndex(nextIdx)
-    }
+    if (nextIdx >= queue.length) setDone(true)
+    else setIndex(nextIdx)
   }
 
-  // Handle block click
   const handleBlockClick = (block, from) => {
-    if (feedback) return // already finished this question
+    if (feedback) return
     setBlockError(false)
     if (from === 'available') {
       setAvailableBlocks(prev => prev.filter(b => b.id !== block.id))
@@ -105,35 +82,27 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
 
   const checkBlocks = () => {
     if (!sentenceData) return
-    const currentSentence = selectedBlocks.map(b => b.text).join(' ')
-    // Compare without trailing punctuation
-    const targetSentence = sentenceData.german.replace(/[.!?]$/, '')
-    if (currentSentence === targetSentence) {
-      // Success! Speak full sentence and show translation
+    const current = selectedBlocks.map(b => b.text).join(' ')
+    const target  = sentenceData.german.replace(/[.!?]$/, '')
+    if (current === target) {
       speakGerman(sentenceData.german)
-      setFeedback({ 
-        status: 'correct', 
-        message: '📖 ' + sentenceData.russian 
-      })
+      setFeedback({ status: 'correct', message: '📖 ' + sentenceData.russian })
     } else {
       setBlockError(true)
       setTimeout(() => setBlockError(false), 600)
     }
   }
 
-  // Handle free form check
   const checkFreeForm = async () => {
     if (!freeInput.trim() || loadingCheck) return
     setLoadingCheck(true)
     try {
       const data = await checkSentence(currentWord.word, freeInput.trim())
       setFeedback({ status: data.status, message: data.feedback })
-      if (data.status === 'correct' || data.status === 'minor_errors') {
-        speakGerman(freeInput.trim())
-      }
+      if (data.status === 'correct' || data.status === 'minor_errors') speakGerman(freeInput.trim())
     } catch (err) {
       console.error('checkSentence error:', err)
-      setFeedback({ status: 'incorrect', message: 'Не удалось проверить предложение. Попробуйте ещё раз.' })
+      setFeedback({ status: 'incorrect', message: lang === 'en' ? 'Could not check the sentence. Try again.' : 'Nie udało się sprawdzić zdania. Spróbuj ponownie.' })
     } finally {
       setLoadingCheck(false)
     }
@@ -144,12 +113,12 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
       <div className="py-12 flex flex-col items-center gap-6 animate-fade-in text-center">
         <div className="text-5xl">🏆</div>
         <div>
-          <h2 className="text-2xl font-bold text-stone-900 dark:text-white transition-colors">Тренировка завершена!</h2>
-          <p className="text-stone-500 dark:text-stone-400 mt-1">Отличная работа над построением предложений.</p>
+          <h2 className="text-2xl font-bold text-stone-900 dark:text-white">{t('sb_done_title', lang)}</h2>
+          <p className="text-stone-500 dark:text-stone-400 mt-1">{t('sb_done_sub', lang)}</p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => navigate('/')} className="px-5 py-2.5 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 transition-colors">На главную</button>
-        </div>
+        <button onClick={() => navigate('/')} className="px-5 py-2.5 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 transition-colors">
+          {t('sb_home', lang)}
+        </button>
       </div>
     )
   }
@@ -157,22 +126,16 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
   return (
     <div className="py-6 max-w-xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => navigate('/')} className="text-stone-400 hover:text-stone-600 text-sm">← Назад</button>
+        <button onClick={() => navigate('/')} className="text-stone-400 hover:text-stone-600 text-sm">{t('sb_back', lang)}</button>
         <span className="text-sm text-stone-400 font-mono">{index + 1} / {queue.length}</span>
-        
-        {/* Mode Toggle */}
         <div className="flex bg-stone-100 dark:bg-stone-800 p-1 rounded-lg">
-          <button 
-            onClick={() => { setMode('blocks'); setFeedback(null) }}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${mode === 'blocks' ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-700 dark:text-stone-400'}`}
-          >
-            Блоки
+          <button onClick={() => { setMode('blocks'); setFeedback(null) }}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${mode === 'blocks' ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-700 dark:text-stone-400'}`}>
+            {t('sb_mode_blocks', lang)}
           </button>
-          <button 
-            onClick={() => { setMode('free'); setFeedback(null) }}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${mode === 'free' ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-700 dark:text-stone-400'}`}
-          >
-            Свой вариант
+          <button onClick={() => { setMode('free'); setFeedback(null) }}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${mode === 'free' ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-700 dark:text-stone-400'}`}>
+            {t('sb_mode_free', lang)}
           </button>
         </div>
       </div>
@@ -187,110 +150,78 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
           </svg>
-          Генерируем задание...
+          {t('sb_loading', lang)}
         </div>
       ) : apiError ? (
         <div className="py-12 flex flex-col items-center gap-4 text-center">
           <div className="text-4xl">⚠️</div>
           <div>
-            <div className="font-semibold text-stone-900 dark:text-white">Не удалось загрузить задание</div>
-            <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-              Проверьте подключение к интернету и правильность API-ключа.
-            </div>
+            <div className="font-semibold text-stone-900 dark:text-white">{t('sb_error_title', lang)}</div>
+            <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">{t('sb_error_sub', lang)}</div>
           </div>
-          <button 
-            onClick={() => { setApiError(false); setLoadingSentence(true) }}
-            className="px-5 py-2.5 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 transition-colors"
-          >
-            Попробовать снова
+          <button onClick={() => { setApiError(false); setLoadingSentence(true) }}
+            className="px-5 py-2.5 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 transition-colors">
+            {t('sb_retry', lang)}
           </button>
           <button onClick={() => nextQuestion(false)} className="text-sm text-stone-400 hover:text-stone-600 transition-colors">
-            Пропустить слово →
+            {t('sb_skip', lang)}
           </button>
         </div>
       ) : (
         <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm p-6 mb-4 transition-colors">
-          
           <div className="mb-6">
             <div className="text-sm text-stone-500 dark:text-stone-400 mb-1">
-              {mode === 'blocks' ? 'Собери перевод предложения:' : 'Составь предложение со словом:'}
+              {mode === 'blocks' ? t('sb_prompt_blocks', lang) : t('sb_prompt_free', lang)}
             </div>
             {mode === 'blocks' ? (
-              <div className="text-xl font-medium text-stone-900 dark:text-white leading-tight">
-                {sentenceData?.russian}
-              </div>
+              <div className="text-xl font-medium text-stone-900 dark:text-white leading-tight">{sentenceData?.russian}</div>
             ) : (
-              <div className="text-2xl font-bold text-stone-900 dark:text-white">
-                {currentWord.word}
-              </div>
+              <div className="text-2xl font-bold text-stone-900 dark:text-white">{currentWord.word}</div>
             )}
           </div>
 
-          {/* Blocks Mode */}
           {mode === 'blocks' && (
             <div className="space-y-6">
-              {/* Target Area */}
               <div className={`min-h-[60px] p-3 rounded-xl border-2 border-dashed ${blockError ? 'border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-900/10 animate-shake' : 'border-stone-200 dark:border-stone-700'} flex flex-wrap gap-2 items-start transition-all`}>
                 {selectedBlocks.map(b => (
-                  <button 
-                    key={b.id} 
-                    onClick={() => handleBlockClick(b, 'selected')}
-                    className="px-3 py-2 bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-white rounded-lg shadow-sm font-medium hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                  >
+                  <button key={b.id} onClick={() => handleBlockClick(b, 'selected')}
+                    className="px-3 py-2 bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-white rounded-lg shadow-sm font-medium hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors">
                     {b.text}
                   </button>
                 ))}
-                {selectedBlocks.length === 0 && <span className="text-stone-400 dark:text-stone-600 p-2">Перетащите слова сюда...</span>}
+                {selectedBlocks.length === 0 && <span className="text-stone-400 dark:text-stone-600 p-2">{t('sb_placeholder', lang)}</span>}
               </div>
-
-              {/* Source Area */}
               <div className="min-h-[60px] flex flex-wrap gap-2 justify-center">
                 {availableBlocks.map(b => (
-                  <button 
-                    key={b.id} 
-                    onClick={() => handleBlockClick(b, 'available')}
-                    className="px-3 py-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white rounded-lg shadow-sm font-medium hover:border-brand-300 hover:text-brand-600 transition-colors"
-                  >
+                  <button key={b.id} onClick={() => handleBlockClick(b, 'available')}
+                    className="px-3 py-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white rounded-lg shadow-sm font-medium hover:border-brand-300 hover:text-brand-600 transition-colors">
                     {b.text}
                   </button>
                 ))}
               </div>
-
               {!feedback && availableBlocks.length === 0 && selectedBlocks.length > 0 && (
-                <button 
-                  onClick={checkBlocks}
-                  className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold hover:bg-brand-600 transition-colors"
-                >
-                  Проверить
+                <button onClick={checkBlocks} className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold hover:bg-brand-600 transition-colors">
+                  {t('sb_check', lang)}
                 </button>
               )}
             </div>
           )}
 
-          {/* Free Mode */}
           {mode === 'free' && (
             <div className="space-y-4">
-              <textarea 
-                value={freeInput}
-                onChange={e => setFreeInput(e.target.value)}
-                placeholder={`Например: Ich lerne ${currentWord.word}...`}
+              <textarea value={freeInput} onChange={e => setFreeInput(e.target.value)}
+                placeholder={`z.B.: Ich lerne ${currentWord.word}...`}
                 className="w-full px-4 py-3 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl text-stone-900 dark:text-white focus:outline-none focus:border-brand-500 min-h-[100px] resize-none transition-colors"
-                disabled={feedback || loadingCheck}
-              />
-              
+                disabled={feedback || loadingCheck} />
               {!feedback && (
-                <button 
-                  onClick={checkFreeForm}
-                  disabled={!freeInput.trim() || loadingCheck}
-                  className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold hover:bg-brand-600 disabled:opacity-50 transition-colors flex justify-center items-center gap-2"
-                >
-                  {loadingCheck ? 'Проверяем...' : 'Проверить AI'}
+                <button onClick={checkFreeForm} disabled={!freeInput.trim() || loadingCheck}
+                  className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold hover:bg-brand-600 disabled:opacity-50 transition-colors flex justify-center items-center gap-2">
+                  {loadingCheck ? t('sb_checking', lang) : t('sb_check_ai', lang)}
                 </button>
               )}
             </div>
           )}
 
-          {/* Feedback Area */}
           {feedback && (
             <div className={`mt-6 p-4 rounded-xl border ${
               feedback.status === 'correct' ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' :
@@ -307,22 +238,18 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
                     feedback.status === 'minor_errors' ? 'text-amber-800 dark:text-amber-400' :
                     'text-rose-800 dark:text-rose-400'
                   }`}>
-                    {feedback.status === 'correct' ? 'Отлично!' : feedback.status === 'minor_errors' ? 'Почти идеально' : 'Есть ошибки'}
+                    {feedback.status === 'correct' ? t('sb_correct', lang) :
+                     feedback.status === 'minor_errors' ? t('sb_minor', lang) : t('sb_wrong', lang)}
                   </div>
-                  <div className="text-stone-700 dark:text-stone-300 text-sm mt-1 leading-relaxed">
-                    {feedback.message}
-                  </div>
+                  <div className="text-stone-700 dark:text-stone-300 text-sm mt-1 leading-relaxed">{feedback.message}</div>
                 </div>
               </div>
-              <button 
-                onClick={() => nextQuestion(feedback.status === 'correct' || feedback.status === 'minor_errors')}
-                className="mt-4 w-full py-2.5 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-600 rounded-lg font-medium text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors"
-              >
-                Следующее слово →
+              <button onClick={() => nextQuestion(feedback.status === 'correct' || feedback.status === 'minor_errors')}
+                className="mt-4 w-full py-2.5 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-600 rounded-lg font-medium text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors">
+                {t('sb_next', lang)}
               </button>
             </div>
           )}
-
         </div>
       )}
     </div>

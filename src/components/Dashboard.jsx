@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { CATEGORIES, CATEGORY_COLORS } from '../data/words'
 import { STATUS } from '../lib/srs'
+import { useLanguage } from '../hooks/useLanguage'
+import { t, getCategoryNames } from '../i18n/translations'
 import AddWordModal from './AddWordModal'
 
 function StatCard({ value, label, color }) {
@@ -35,18 +37,12 @@ function ActionButton({ onClick, icon, title, subtitle, accent }) {
 
 export default function Dashboard({ stats, progressMap, words, user, sessionId, fetchCustomWords }) {
   const navigate = useNavigate()
-  const [showAddWord, setShowAddWord] = useState(false) // later we'll use a modal
+  const { lang } = useLanguage()
+  const [showAddWord, setShowAddWord] = useState(false)
 
   const pct     = Math.round((stats.mastered / stats.total) * 100) || 0
   const learnedTotal = stats.learning + stats.review + stats.mastered
   const dueNow  = stats.dueToday + (stats.total - learnedTotal > 0 ? Math.min(20, stats.total - learnedTotal) : 0)
-
-  // Category breakdown
-  const catProgress = Object.values(CATEGORIES).map((name, i) => {
-    const catId   = Object.keys(CATEGORIES)[i]
-    const color   = CATEGORY_COLORS[catId]
-    return { catId, name, color }
-  })
 
   return (
     <div className="py-6 space-y-6 animate-fade-in">
@@ -54,44 +50,44 @@ export default function Dashboard({ stats, progressMap, words, user, sessionId, 
       {/* Hero */}
       <div className="text-center pt-2">
         <h1 className="text-3xl font-bold text-stone-900 dark:text-white transition-colors">
-          {learnedTotal === 0 ? 'Добро пожаловать!' : 'Продолжай учить!'}
+          {learnedTotal === 0 ? t('dash_welcome', lang) : t('dash_keep_going', lang)}
         </h1>
         <p className="text-stone-500 dark:text-stone-400 mt-1 transition-colors">
           {learnedTotal === 0
-            ? `${stats.total} самых важных слов немецкого языка`
-            : `Освоено ${learnedTotal} из ${stats.total} слов · ${pct}%`}
+            ? `${stats.total} ${t('dash_subtitle_new', lang)}`
+            : `${t('dash_stat_mastered', lang)}: ${learnedTotal} ${t('dash_progress_of', lang)} ${stats.total} · ${pct}%`}
         </p>
       </div>
 
       {/* Progress bar */}
       <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-4 transition-colors">
         <div className="flex justify-between text-xs text-stone-400 mb-2">
-          <span>Прогресс</span>
+          <span>{t('dash_progress_lbl', lang)}</span>
           <span>{learnedTotal} / {stats.total}</span>
         </div>
         <div className="h-3 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden flex">
           <div
             className="h-full bg-green-400 rounded-l-full progress-fill"
             style={{ width: `${(stats.mastered / stats.total) * 100}%` }}
-            title="Усвоено"
+            title={t('dash_legend_mastered', lang)}
           />
           <div
             className="h-full bg-blue-400 progress-fill"
             style={{ width: `${(stats.review / stats.total) * 100}%` }}
-            title="На повторении"
+            title={t('dash_legend_review', lang)}
           />
           <div
             className="h-full bg-amber-400 progress-fill"
             style={{ width: `${(stats.learning / stats.total) * 100}%` }}
-            title="Учится"
+            title={t('dash_legend_learning', lang)}
           />
         </div>
         <div className="flex gap-4 mt-3 text-xs">
           {[
-            { color: 'bg-amber-400',  label: 'Изучается',   n: stats.learning },
-            { color: 'bg-blue-400',   label: 'Повторение',  n: stats.review   },
-            { color: 'bg-green-400',  label: 'Усвоено',     n: stats.mastered },
-            { color: 'bg-stone-200 dark:bg-stone-700',  label: 'Новые',       n: stats.new      },
+            { color: 'bg-amber-400', label: t('dash_legend_learning', lang), n: stats.learning },
+            { color: 'bg-blue-400',  label: t('dash_legend_review', lang),   n: stats.review   },
+            { color: 'bg-green-400', label: t('dash_legend_mastered', lang), n: stats.mastered },
+            { color: 'bg-stone-200 dark:bg-stone-700', label: t('dash_legend_new', lang), n: stats.new },
           ].map(s => (
             <div key={s.label} className="flex items-center gap-1.5">
               <div className={`w-2.5 h-2.5 rounded-full ${s.color}`} />
@@ -103,9 +99,9 @@ export default function Dashboard({ stats, progressMap, words, user, sessionId, 
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard value={stats.mastered} label="Усвоено"    color="#22c55e" />
-        <StatCard value={dueNow}         label="К изучению" color="#C62828" />
-        <StatCard value={`${pct}%`}      label="Готово"     color="#f59e0b" />
+        <StatCard value={stats.mastered} label={t('dash_stat_mastered', lang)} color="#22c55e" />
+        <StatCard value={dueNow}         label={t('dash_stat_to_learn', lang)} color="#C62828" />
+        <StatCard value={`${pct}%`}      label={t('dash_stat_done', lang)}     color="#f59e0b" />
       </div>
 
       {/* Action buttons */}
@@ -113,34 +109,34 @@ export default function Dashboard({ stats, progressMap, words, user, sessionId, 
         <ActionButton
           onClick={() => navigate('/learn')}
           icon="🎴"
-          title="Учить слова"
-          subtitle={`Карточки с интервальным повторением · ${Math.min(20, stats.new)} новых`}
+          title={t('dash_action_learn', lang)}
+          subtitle={t('dash_action_learn_sub', lang, { n: Math.min(20, stats.new) })}
           accent
         />
         <ActionButton
           onClick={() => navigate('/sentence-builder')}
           icon="🧩"
-          title="Собери предложение"
-          subtitle="Тренировка порядка слов и грамматики"
+          title={t('dash_action_sentence', lang)}
+          subtitle={t('dash_action_sentence_sub', lang)}
         />
         <ActionButton
           onClick={() => navigate('/quiz')}
           icon="⚡"
-          title="Быстрый тест"
-          subtitle="Выбери правильное слово из 4 вариантов"
+          title={t('dash_action_quiz', lang)}
+          subtitle={t('dash_action_quiz_sub', lang)}
         />
         <div className="grid grid-cols-2 gap-3">
           <ActionButton
             onClick={() => navigate('/browse')}
             icon="📖"
-            title="Все слова"
-            subtitle="Поиск и фильтры"
+            title={t('dash_action_browse', lang)}
+            subtitle={t('dash_action_browse_sub', lang)}
           />
           <ActionButton
             onClick={() => setShowAddWord(true)}
             icon="➕"
-            title="Своё слово"
-            subtitle="Добавить в словарь"
+            title={t('dash_action_add', lang)}
+            subtitle={t('dash_action_add_sub', lang)}
           />
         </div>
       </div>
@@ -148,11 +144,11 @@ export default function Dashboard({ stats, progressMap, words, user, sessionId, 
       {/* How it works */}
       {learnedTotal === 0 && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl p-4 transition-colors">
-          <div className="font-semibold text-amber-800 dark:text-amber-500 mb-2">💡 Как это работает</div>
+          <div className="font-semibold text-amber-800 dark:text-amber-500 mb-2">{t('dash_how_title', lang)}</div>
           <ul className="text-sm text-amber-700 dark:text-amber-400/80 space-y-1">
-            <li>• <strong>Карточки</strong> — видишь слово с артиклем, думаешь, переворачиваешь → читаешь объяснение в контексте</li>
-            <li>• <strong>Оценка</strong> — «Не знаю / Сложно / Знаю / Легко» → система сама решает, когда повторить</li>
-            <li>• <strong>Прогресс</strong> — сохраняется автоматически, работает на любом устройстве</li>
+            <li dangerouslySetInnerHTML={{ __html: t('dash_how_1', lang) }} />
+            <li dangerouslySetInnerHTML={{ __html: t('dash_how_2', lang) }} />
+            <li dangerouslySetInnerHTML={{ __html: t('dash_how_3', lang) }} />
           </ul>
         </div>
       )}
