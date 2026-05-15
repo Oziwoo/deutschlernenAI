@@ -8,17 +8,17 @@ import QuizMode         from './components/QuizMode'
 import BrowseMode       from './components/BrowseMode'
 
 export default function App() {
-  const { sessionId, loading: sessionLoading } = useSession()
+  const { sessionId, user, loading: sessionLoading } = useSession()
   const { progressMap, updateProgress, loading: progressLoading, stats } =
-    useProgress(sessionId)
+    useProgress(sessionId, user)
 
   const isLoading = sessionLoading || progressLoading
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-50">
+      <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-stone-950 transition-colors">
         <div className="text-center">
-          <div className="text-4xl font-bold tracking-tight text-stone-800 mb-2">
+          <div className="text-4xl font-bold tracking-tight text-stone-800 dark:text-white mb-2">
             Deutsch<span className="text-brand-500">1000</span>
           </div>
           <div className="flex items-center justify-center gap-2 text-stone-400 text-sm mt-4">
@@ -33,11 +33,11 @@ export default function App() {
     )
   }
 
-  const shared = { sessionId, progressMap, updateProgress, stats }
+  const shared = { sessionId, user, progressMap, updateProgress, stats }
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <Navigation stats={stats} />
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 transition-colors">
+      <Navigation stats={stats} user={user} />
       <main className="max-w-4xl mx-auto px-4 pb-20">
         <Routes>
           <Route path="/"       element={<Dashboard    {...shared} />} />

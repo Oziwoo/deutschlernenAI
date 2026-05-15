@@ -4,9 +4,9 @@ import { STATUS } from '../lib/srs'
 
 function StatCard({ value, label, color }) {
   return (
-    <div className="bg-white rounded-xl border border-stone-200 p-4 text-center">
+    <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-4 text-center transition-colors">
       <div className="text-3xl font-bold" style={{ color }}>{value}</div>
-      <div className="text-xs text-stone-500 mt-1 font-medium uppercase tracking-wide">{label}</div>
+      <div className="text-xs text-stone-500 dark:text-stone-400 mt-1 font-medium uppercase tracking-wide">{label}</div>
     </div>
   )
 }
@@ -18,15 +18,15 @@ function ActionButton({ onClick, icon, title, subtitle, accent }) {
       className={`w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all duration-150 hover:shadow-md active:scale-[.98]
         ${accent
           ? 'bg-brand-500 border-brand-600 text-white hover:bg-brand-600'
-          : 'bg-white border-stone-200 text-stone-800 hover:border-stone-300'
+          : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-800 dark:text-stone-200 hover:border-stone-300 dark:hover:border-stone-700'
         }`}
     >
       <span className="text-2xl">{icon}</span>
       <div>
-        <div className={`font-semibold ${accent ? 'text-white' : 'text-stone-900'}`}>{title}</div>
-        <div className={`text-sm mt-0.5 ${accent ? 'text-red-100' : 'text-stone-400'}`}>{subtitle}</div>
+        <div className={`font-semibold ${accent ? 'text-white' : 'text-stone-900 dark:text-white'}`}>{title}</div>
+        <div className={`text-sm mt-0.5 ${accent ? 'text-red-100' : 'text-stone-400 dark:text-stone-500'}`}>{subtitle}</div>
       </div>
-      <span className={`ml-auto text-lg ${accent ? 'text-red-200' : 'text-stone-300'}`}>→</span>
+      <span className={`ml-auto text-lg ${accent ? 'text-red-200' : 'text-stone-300 dark:text-stone-600'}`}>→</span>
     </button>
   )
 }
@@ -50,10 +50,10 @@ export default function Dashboard({ stats, progressMap }) {
 
       {/* Hero */}
       <div className="text-center pt-2">
-        <h1 className="text-3xl font-bold text-stone-900">
+        <h1 className="text-3xl font-bold text-stone-900 dark:text-white transition-colors">
           {learnedTotal === 0 ? 'Добро пожаловать!' : 'Продолжай учить!'}
         </h1>
-        <p className="text-stone-500 mt-1">
+        <p className="text-stone-500 dark:text-stone-400 mt-1 transition-colors">
           {learnedTotal === 0
             ? '1000 самых важных слов немецкого языка'
             : `Освоено ${learnedTotal} из 1000 слов · ${pct}%`}
@@ -61,12 +61,12 @@ export default function Dashboard({ stats, progressMap }) {
       </div>
 
       {/* Progress bar */}
-      <div className="bg-white rounded-xl border border-stone-200 p-4">
+      <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-4 transition-colors">
         <div className="flex justify-between text-xs text-stone-400 mb-2">
           <span>Прогресс</span>
           <span>{learnedTotal} / 1000</span>
         </div>
-        <div className="h-3 bg-stone-100 rounded-full overflow-hidden flex">
+        <div className="h-3 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden flex">
           <div
             className="h-full bg-green-400 rounded-l-full progress-fill"
             style={{ width: `${(stats.mastered / 1000) * 100}%` }}
@@ -88,11 +88,11 @@ export default function Dashboard({ stats, progressMap }) {
             { color: 'bg-amber-400',  label: 'Изучается',   n: stats.learning },
             { color: 'bg-blue-400',   label: 'Повторение',  n: stats.review   },
             { color: 'bg-green-400',  label: 'Усвоено',     n: stats.mastered },
-            { color: 'bg-stone-200',  label: 'Новые',       n: stats.new      },
+            { color: 'bg-stone-200 dark:bg-stone-700',  label: 'Новые',       n: stats.new      },
           ].map(s => (
             <div key={s.label} className="flex items-center gap-1.5">
               <div className={`w-2.5 h-2.5 rounded-full ${s.color}`} />
-              <span className="text-stone-500">{s.label}: <strong className="text-stone-700">{s.n}</strong></span>
+              <span className="text-stone-500 dark:text-stone-400">{s.label}: <strong className="text-stone-700 dark:text-stone-300">{s.n}</strong></span>
             </div>
           ))}
         </div>
@@ -130,9 +130,9 @@ export default function Dashboard({ stats, progressMap }) {
 
       {/* How it works */}
       {learnedTotal === 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <div className="font-semibold text-amber-800 mb-2">💡 Как это работает</div>
-          <ul className="text-sm text-amber-700 space-y-1">
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl p-4 transition-colors">
+          <div className="font-semibold text-amber-800 dark:text-amber-500 mb-2">💡 Как это работает</div>
+          <ul className="text-sm text-amber-700 dark:text-amber-400/80 space-y-1">
             <li>• <strong>Карточки</strong> — видишь слово с артиклем, думаешь, переворачиваешь → читаешь объяснение в контексте</li>
             <li>• <strong>Оценка</strong> — «Не знаю / Сложно / Знаю / Легко» → система сама решает, когда повторить</li>
             <li>• <strong>Прогресс</strong> — сохраняется автоматически, работает на любом устройстве</li>

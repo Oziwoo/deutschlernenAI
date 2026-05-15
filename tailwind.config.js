@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
@@ -9,7 +10,7 @@ export default {
       },
       colors: {
         brand: {
-          50:  '#fff5f5',
+          50: '#fff5f5',
           100: '#ffe0e0',
           200: '#ffbdbd',
           500: '#C62828',
@@ -22,16 +23,16 @@ export default {
         }
       },
       animation: {
-        'fade-in':    'fadeIn 0.2s ease',
-        'slide-up':   'slideUp 0.3s cubic-bezier(.22,.68,0,1.2)',
+        'fade-in': 'fadeIn 0.2s ease',
+        'slide-up': 'slideUp 0.3s cubic-bezier(.22,.68,0,1.2)',
         'flip-front': 'flipFront 0.3s ease',
-        'flip-back':  'flipBack 0.3s ease',
+        'flip-back': 'flipBack 0.3s ease',
       },
       keyframes: {
-        fadeIn:    { from: { opacity: 0 }, to: { opacity: 1 } },
-        slideUp:   { from: { opacity: 0, transform: 'translateY(16px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
-        flipFront: { from: { transform: 'rotateY(0deg)' },   to: { transform: 'rotateY(90deg)' } },
-        flipBack:  { from: { transform: 'rotateY(-90deg)' }, to: { transform: 'rotateY(0deg)' } },
+        fadeIn: { from: { opacity: 0 }, to: { opacity: 1 } },
+        slideUp: { from: { opacity: 0, transform: 'translateY(16px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+        flipFront: { from: { transform: 'rotateY(0deg)' }, to: { transform: 'rotateY(90deg)' } },
+        flipBack: { from: { transform: 'rotateY(-90deg)' }, to: { transform: 'rotateY(0deg)' } },
       },
     },
   },

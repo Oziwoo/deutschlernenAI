@@ -7,6 +7,7 @@
 create table if not exists sessions (
   id         uuid        primary key default gen_random_uuid(),
   device_id  text        unique not null,
+  user_id    uuid        references auth.users(id) on delete set null,
   created_at timestamptz default now(),
   last_seen  timestamptz default now()
 );
@@ -22,6 +23,7 @@ create table if not exists word_explanations (
 create table if not exists progress (
   id           uuid        primary key default gen_random_uuid(),
   session_id   uuid        references sessions(id) on delete cascade,
+  user_id      uuid        references auth.users(id) on delete cascade,
   word_id      int         not null,
   status       text        default 'new'
                            check (status in ('new','learning','review','mastered')),
@@ -32,7 +34,8 @@ create table if not exists progress (
   last_rating  int,
   created_at   timestamptz default now(),
   updated_at   timestamptz default now(),
-  unique (session_id, word_id)
+  unique (session_id, word_id),
+  unique (user_id, word_id) -- Ensures a user has only one progress record per word
 );
 
 -- ================================================================

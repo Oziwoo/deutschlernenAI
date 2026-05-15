@@ -4,10 +4,10 @@ import { STATUS } from '../lib/srs'
 import { fetchExplanation } from '../lib/gemini'
 
 const STATUS_LABELS = {
-  new:      { label:'Новое',       cls:'bg-stone-100 text-stone-500'  },
-  learning: { label:'Учится',      cls:'bg-amber-100 text-amber-600'  },
-  review:   { label:'Повторение',  cls:'bg-blue-100 text-blue-600'    },
-  mastered: { label:'Усвоено',     cls:'bg-green-100 text-green-600'  },
+  new:      { label:'Новое',       cls:'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400'  },
+  learning: { label:'Учится',      cls:'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'  },
+  review:   { label:'Повторение',  cls:'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'    },
+  mastered: { label:'Усвоено',     cls:'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400'  },
 }
 
 function WordModal({ word, progress, onClose }) {
@@ -27,9 +27,9 @@ function WordModal({ word, progress, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 animate-fade-in" onClick={onClose}>
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-stone-200 animate-slide-up overflow-hidden max-h-[85vh] flex flex-col"
+      <div className="w-full max-w-lg bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 animate-slide-up overflow-hidden max-h-[85vh] flex flex-col transition-colors"
         onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between p-5 border-b border-stone-100">
+        <div className="flex items-start justify-between p-5 border-b border-stone-100 dark:border-stone-800">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               {word.article && (
@@ -37,7 +37,7 @@ function WordModal({ word, progress, onClose }) {
                   {word.article}
                 </span>
               )}
-              <span className="text-2xl font-bold text-stone-900">{word.word}</span>
+              <span className="text-2xl font-bold text-stone-900 dark:text-white">{word.word}</span>
             </div>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <span className="text-xs px-2 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: catColor }}>
@@ -47,13 +47,13 @@ function WordModal({ word, progress, onClose }) {
               <span className="text-xs text-stone-400 font-mono">#{word.rank}</span>
             </div>
           </div>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-600 p-1 rounded-lg hover:bg-stone-100 ml-2 shrink-0">✕</button>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 ml-2 shrink-0 transition-colors">✕</button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
           {!expl && !loading && (
             <button onClick={load}
-              className="w-full py-3 border border-brand-200 text-brand-600 rounded-xl font-medium hover:bg-brand-50 transition-colors">
+              className="w-full py-3 border border-brand-200 dark:border-brand-800 text-brand-600 dark:text-brand-400 rounded-xl font-medium hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors">
               Показать объяснение в контексте
             </button>
           )}
@@ -66,15 +66,15 @@ function WordModal({ word, progress, onClose }) {
               <span className="text-sm">Генерируем объяснение…</span>
             </div>
           )}
-          {expl && <div className="text-stone-700 leading-relaxed text-sm whitespace-pre-wrap">{expl}</div>}
+          {expl && <div className="text-stone-700 dark:text-stone-300 leading-relaxed text-sm whitespace-pre-wrap">{expl}</div>}
         </div>
 
         {progress && (
-          <div className="px-5 pb-4 pt-2 border-t border-stone-100 text-xs text-stone-400 flex gap-4">
-            <span>Повторений: <strong className="text-stone-600">{progress.review_count}</strong></span>
-            <span>Интервал: <strong className="text-stone-600">{progress.interval} дн.</strong></span>
+          <div className="px-5 pb-4 pt-2 border-t border-stone-100 dark:border-stone-800 text-xs text-stone-400 flex gap-4">
+            <span>Повторений: <strong className="text-stone-600 dark:text-stone-300">{progress.review_count}</strong></span>
+            <span>Интервал: <strong className="text-stone-600 dark:text-stone-300">{progress.interval} дн.</strong></span>
             {progress.next_review && (
-              <span>Следующее: <strong className="text-stone-600">{new Date(progress.next_review).toLocaleDateString('ru')}</strong></span>
+              <span>Следующее: <strong className="text-stone-600 dark:text-stone-300">{new Date(progress.next_review).toLocaleDateString('ru')}</strong></span>
             )}
           </div>
         )}
@@ -103,23 +103,23 @@ export default function BrowseMode({ progressMap }) {
   return (
     <div className="py-6 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-stone-900">Все слова</h1>
+        <h1 className="text-xl font-bold text-stone-900 dark:text-white transition-colors">Все слова</h1>
         <span className="text-sm text-stone-400">{filtered.length} из 1000</span>
       </div>
 
       <input type="text" value={search} onChange={e => setSearch(e.target.value)}
         placeholder="Поиск по слову…"
-        className="w-full px-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-brand-400 mb-3" />
+        className="w-full px-4 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-white rounded-xl text-sm focus:outline-none focus:border-brand-400 dark:focus:border-brand-500 mb-3 transition-colors" />
 
       {/* Category pills */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
         <button onClick={() => setCat('all')}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors ${catFilter === 'all' ? 'bg-stone-800 text-white' : 'bg-white border border-stone-200 text-stone-500 hover:bg-stone-50'}`}>
+          className={`px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors ${catFilter === 'all' ? 'bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900' : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'}`}>
           Все
         </button>
         {Object.entries(CATEGORIES).map(([id, name]) => (
           <button key={id} onClick={() => setCat(catFilter === id ? 'all' : id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors ${catFilter === id ? 'text-white' : 'bg-white border border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors ${catFilter === id ? 'text-white' : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'}`}
             style={catFilter === id ? { backgroundColor: CATEGORY_COLORS[id] } : {}}>
             {name}
           </button>
@@ -136,7 +136,7 @@ export default function BrowseMode({ progressMap }) {
           { value:'mastered', label:'Усвоено' },
         ].map(s => (
           <button key={s.value} onClick={() => setStatus(s.value)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === s.value ? 'bg-stone-800 text-white' : 'bg-white border border-stone-200 text-stone-500 hover:bg-stone-50'}`}>
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === s.value ? 'bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900' : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'}`}>
             {s.label}
           </button>
         ))}
@@ -152,9 +152,9 @@ export default function BrowseMode({ progressMap }) {
             const catColor   = CATEGORY_COLORS[word.category]
             return (
               <button key={word.id} onClick={() => setSelected(word)}
-                className="bg-white border border-stone-200 rounded-xl p-3 text-left hover:border-stone-300 hover:shadow-sm transition-all active:scale-95 group">
+                className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-3 text-left hover:border-stone-300 dark:hover:border-stone-700 hover:shadow-sm transition-all active:scale-95 group">
                 <div className="flex items-start justify-between gap-1 mb-1">
-                  <span className="font-semibold text-stone-900 text-sm leading-tight group-hover:text-brand-600 transition-colors">
+                  <span className="font-semibold text-stone-900 dark:text-white text-sm leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                     {word.article
                       ? <><span className="text-xs font-normal text-stone-400 mr-1">{word.article}</span>{word.word}</>
                       : word.word}
