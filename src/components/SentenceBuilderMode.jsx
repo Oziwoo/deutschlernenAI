@@ -61,8 +61,8 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
         
         setSentenceData(data)
         
-        // Prepare blocks
-        const tokens = data.german.split(' ').map(t => t.trim()).filter(Boolean)
+        // Prepare blocks — strip trailing period so it's not a hint
+        const tokens = data.german.replace(/[.!?]$/, '').split(' ').map(t => t.trim()).filter(Boolean)
         const shuffled = shuffle([...tokens].map((t, i) => ({ id: i, text: t })))
         setAvailableBlocks(shuffled)
         
@@ -106,17 +106,18 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
   const checkBlocks = () => {
     if (!sentenceData) return
     const currentSentence = selectedBlocks.map(b => b.text).join(' ')
-    if (currentSentence === sentenceData.german) {
-      // Success!
+    // Compare without trailing punctuation
+    const targetSentence = sentenceData.german.replace(/[.!?]$/, '')
+    if (currentSentence === targetSentence) {
+      // Success! Speak full sentence and show translation
       speakGerman(sentenceData.german)
-      setFeedback({ status: 'correct', message: 'Отлично! Правильный порядок слов.' })
+      setFeedback({ 
+        status: 'correct', 
+        message: '📖 ' + sentenceData.russian 
+      })
     } else {
-      // Error
       setBlockError(true)
-      // Allow infinite attempts, we just show error animation
-      setTimeout(() => setBlockError(false), 500)
-      // We can also mark it as wrong in progress immediately if it's the first mistake
-      // But user wanted infinite attempts. Let's just let them retry.
+      setTimeout(() => setBlockError(false), 600)
     }
   }
 
@@ -315,7 +316,7 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
               </div>
               <button 
                 onClick={() => nextQuestion(feedback.status === 'correct' || feedback.status === 'minor_errors')}
-                className="mt-4 w-full py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg font-medium hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
+                className="mt-4 w-full py-2.5 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-600 rounded-lg font-medium text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors"
               >
                 Следующее слово →
               </button>
