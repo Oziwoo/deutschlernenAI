@@ -66,7 +66,7 @@ function WordModal({ word, progress, onClose }) {
               <span className="text-sm">Генерируем объяснение…</span>
             </div>
           )}
-          {expl && <p className="text-stone-700 leading-relaxed text-sm">{expl}</p>}
+          {expl && <div className="text-stone-700 leading-relaxed text-sm whitespace-pre-wrap">{expl}</div>}
         </div>
 
         {progress && (

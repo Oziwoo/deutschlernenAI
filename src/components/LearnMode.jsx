@@ -168,7 +168,7 @@ export default function LearnMode({ progressMap, updateProgress }) {
                   <span className="text-sm">Генерируем объяснение…</span>
                 </div>
               ) : (
-                <p className="text-stone-700 leading-relaxed text-sm">{explanation}</p>
+                <div className="text-stone-700 leading-relaxed text-sm whitespace-pre-wrap">{explanation}</div>
               )}
             </div>
 
