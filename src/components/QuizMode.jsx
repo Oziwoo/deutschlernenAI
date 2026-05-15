@@ -82,7 +82,15 @@ export default function QuizMode({ progressMap, updateProgress }) {
   if (!current) return <div className="py-12 text-center text-stone-400">Загрузка…</div>
 
   const catColor = CATEGORY_COLORS[current.category]
-  const expl     = explanations[current.id]
+  let expl     = explanations[current.id]
+  
+  if (expl) {
+    // Mask the current word in the explanation so it's not a dead giveaway
+    // We escape the word first to avoid regex errors with special characters
+    const escapedWord = current.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedWord, 'gi');
+    expl = expl.replace(regex, '______');
+  }
 
   return (
     <div className="py-6 max-w-lg mx-auto animate-fade-in">
