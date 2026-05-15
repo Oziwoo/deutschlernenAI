@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RATING, shuffle, buildStudyQueue } from '../lib/srs'
 import { speakGerman } from '../lib/tts'
+import { fetchSentence, checkSentence } from '../lib/gemini'
 
 export default function SentenceBuilderMode({ words, progressMap, updateProgress }) {
   const navigate = useNavigate()
@@ -24,6 +25,7 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
   const [loadingCheck, setLoadingCheck] = useState(false)
   
   const [done, setDone] = useState(false)
+  const [apiError, setApiError] = useState(false)
 
   // Initialize queue
   useEffect(() => {
@@ -43,7 +45,7 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
     if (!currentWord) return
     let cancelled = false
 
-    const fetchSentence = async () => {
+    const loadSentence = async () => {
       setLoadingSentence(true)
       setSentenceData(null)
       setAvailableBlocks([])
@@ -51,11 +53,10 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
       setBlockError(false)
       setFreeInput('')
       setFeedback(null)
+      setApiError(false)
 
       try {
-        const res = await fetch(`/api/sentence?word=${encodeURIComponent(currentWord.word)}`)
-        if (!res.ok) throw new Error('Failed to load')
-        const data = await res.json()
+        const data = await fetchSentence(currentWord.word)
         if (cancelled) return
         
         setSentenceData(data)
@@ -66,13 +67,14 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
         setAvailableBlocks(shuffled)
         
       } catch (err) {
-        console.error(err)
+        console.error('Sentence load error:', err)
+        if (!cancelled) setApiError(true)
       } finally {
         if (!cancelled) setLoadingSentence(false)
       }
     }
 
-    fetchSentence()
+    loadSentence()
     return () => { cancelled = true }
   }, [currentWord])
 
@@ -123,18 +125,14 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
     if (!freeInput.trim() || loadingCheck) return
     setLoadingCheck(true)
     try {
-      const res = await fetch('/api/check-sentence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: currentWord.word, sentence: freeInput.trim() })
-      })
-      const data = await res.json()
+      const data = await checkSentence(currentWord.word, freeInput.trim())
       setFeedback({ status: data.status, message: data.feedback })
       if (data.status === 'correct' || data.status === 'minor_errors') {
         speakGerman(freeInput.trim())
       }
     } catch (err) {
-      console.error(err)
+      console.error('checkSentence error:', err)
+      setFeedback({ status: 'incorrect', message: 'Не удалось проверить предложение. Попробуйте ещё раз.' })
     } finally {
       setLoadingCheck(false)
     }
@@ -189,6 +187,25 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
           </svg>
           Генерируем задание...
+        </div>
+      ) : apiError ? (
+        <div className="py-12 flex flex-col items-center gap-4 text-center">
+          <div className="text-4xl">⚠️</div>
+          <div>
+            <div className="font-semibold text-stone-900 dark:text-white">Не удалось загрузить задание</div>
+            <div className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+              Проверьте подключение к интернету и правильность API-ключа.
+            </div>
+          </div>
+          <button 
+            onClick={() => { setApiError(false); setLoadingSentence(true) }}
+            className="px-5 py-2.5 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 transition-colors"
+          >
+            Попробовать снова
+          </button>
+          <button onClick={() => nextQuestion(false)} className="text-sm text-stone-400 hover:text-stone-600 transition-colors">
+            Пропустить слово →
+          </button>
         </div>
       ) : (
         <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm p-6 mb-4 transition-colors">

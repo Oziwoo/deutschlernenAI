@@ -1,15 +1,38 @@
 const CATEGORIES_RU = {
-  art:'Артикли и местоимения', con:'Союзы, предлоги, частицы',
-  vb1:'Основные глаголы',     vb2:'Дополнительные глаголы',
-  ppl:'Люди и семья',         plc:'Места и здания',
-  tim:'Время',                obj:'Предметы и вещи',
-  abs:'Абстрактные понятия',  bod:'Тело и здоровье',
-  fod:'Еда и напитки',        nat:'Природа и среда',
-  tec:'Технологии и медиа',   adj:'Прилагательные',
-  adv:'Наречия и числа',
+  art: 'Артикли и местоимения', con: 'Союзы, предлоги, частицы',
+  vb1: 'Основные глаголы', vb2: 'Дополнительные глаголы',
+  ppl: 'Люди и семья', plc: 'Места и здания',
+  tim: 'Время', obj: 'Предметы и вещи',
+  abs: 'Абстрактные понятия', bod: 'Тело и здоровье',
+  fod: 'Еда и напитки', nat: 'Природа и среда',
+  tec: 'Технологии и медиа', adj: 'Прилагательные',
+  adv: 'Наречия и числа',
 }
 
 const memoryCache = {}
+
+async function callGroq(prompt, temperature = 0.7) {
+  const apiKey = import.meta.env.VITE_GOOGLE_API_KEY
+  if (!apiKey) throw new Error('VITE_GOOGLE_API_KEY не задан')
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 300,
+      temperature,
+    }),
+  })
+
+  const data = await res.json()
+  if (!res.ok) throw new Error(data?.error?.message || 'Groq error')
+  return data.choices?.[0]?.message?.content || ''
+}
 
 export async function fetchExplanation(wordObj) {
   const { id, word, article, category } = wordObj
@@ -20,8 +43,8 @@ export async function fetchExplanation(wordObj) {
   if (!apiKey) return 'Ошибка: добавь VITE_GOOGLE_API_KEY в файл .env и перезапусти сервер'
 
   const articlePart = article ? `с артиклем "${article}"` : ''
-  const catName     = CATEGORIES_RU[category] || category
-  const isNoun      = !!article
+  const catName = CATEGORIES_RU[category] || category
+  const isNoun = !!article
 
   const prompt = `Ты — преподаватель немецкого языка. Для слова "${word}" ${articlePart} дай ровно 3 примера использования.
 
@@ -38,9 +61,9 @@ export async function fetchExplanation(wordObj) {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model:       'llama-3.3-70b-versatile',
-        messages:    [{ role: 'user', content: prompt }],
-        max_tokens:  600,
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 600,
         temperature: 0.7,
       }),
     })
@@ -62,4 +85,41 @@ export async function fetchExplanation(wordObj) {
     console.error('fetchExplanation error:', err)
     return 'Не удалось загрузить объяснение. Проверь подключение к интернету.'
   }
+}
+
+/**
+ * Generate a simple German sentence with the given word.
+ * Returns { german, russian } or throws on error.
+ */
+export async function fetchSentence(word) {
+  const cacheKey = `sentence_${word}`
+  if (memoryCache[cacheKey]) return memoryCache[cacheKey]
+
+  const prompt = `You are a German teacher. Create ONE simple German sentence (A1-A2 level, max 8 words) using the word "${word}". Also give its exact Russian translation.
+Reply ONLY with valid JSON, no markdown, no explanation:
+{"german":"German sentence here.","russian":"Russian translation here."}`
+
+  const text = await callGroq(prompt, 0.7)
+
+  // Strip markdown fences if present
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
+  const result = JSON.parse(cleaned)
+
+  memoryCache[cacheKey] = result
+  return result
+}
+
+/**
+ * Check a user's German sentence with AI feedback.
+ * Returns { status: 'correct'|'minor_errors'|'incorrect', feedback: string }
+ */
+export async function checkSentence(word, sentence) {
+  const prompt = `You are a German teacher. The student wrote this sentence using the word "${word}": "${sentence}"
+Check grammar and word usage. Reply ONLY with valid JSON, no markdown:
+{"status":"correct or minor_errors or incorrect","feedback":"Short comment in Russian (2-3 sentences)."}`
+
+  const text = await callGroq(prompt, 0.2)
+
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
+  return JSON.parse(cleaned)
 }
