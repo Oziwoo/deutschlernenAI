@@ -6,6 +6,7 @@ import { fetchExplanation } from '../lib/gemini'
 import { speakGerman } from '../lib/tts'
 import { useLanguage } from '../hooks/useLanguage'
 import { t, getCategoryNames } from '../i18n/translations'
+import { recordStudy } from '../lib/studyHistory'
 
 function ArticleBadge({ article }) {
   if (!article) return null
@@ -57,6 +58,21 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
     else setQueue(q)
   }, [])
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return
+      if (e.code === 'Space' && !flipped) { e.preventDefault(); handleFlip() }
+      if (flipped && !loadingExpl) {
+        if (e.code === 'Digit1') handleRate(RATING.AGAIN)
+        if (e.code === 'Digit2') handleRate(RATING.HARD)
+        if (e.code === 'Digit3') handleRate(RATING.GOOD)
+        if (e.code === 'Digit4') handleRate(RATING.EASY)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [flipped, loadingExpl, currentWord])
+
   const currentWord = queue[index]
 
   const loadExpl = useCallback(async (word) => {
@@ -77,6 +93,7 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
 
   const handleRate = async (rating) => {
     if (!currentWord) return
+    recordStudy(1)
     setScore(s => ({
       good:  s.good  + (rating >= RATING.GOOD  ? 1 : 0),
       hard:  s.hard  + (rating === RATING.HARD  ? 1 : 0),

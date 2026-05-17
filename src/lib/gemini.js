@@ -91,17 +91,17 @@ export async function fetchExplanation(wordObj) {
  * Generate a simple German sentence with the given word.
  * Returns { german, russian } or throws on error.
  */
-export async function fetchSentence(word) {
-  const cacheKey = `sentence_${word}`
+export async function fetchSentence(word, lang = 'en') {
+  const cacheKey = `sentence_${word}_${lang}`
   if (memoryCache[cacheKey]) return memoryCache[cacheKey]
 
-  const prompt = `You are a German teacher. Create ONE simple German sentence (A1-A2 level, max 8 words) using the word "${word}". Also give its exact Russian translation.
+  const langName = lang === 'pl' ? 'Polish' : 'English'
+  const prompt = `You are a German teacher. Create ONE simple German sentence (A1-A2 level, max 8 words) using the word "${word}". Also give its exact ${langName} translation.
 Reply ONLY with valid JSON, no markdown, no explanation:
-{"german":"German sentence here.","russian":"Russian translation here."}`
+{"german":"German sentence here.","translation":"${langName} translation here."}`
 
   const text = await callGroq(prompt, 0.7)
 
-  // Strip markdown fences if present
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
   const result = JSON.parse(cleaned)
 
@@ -113,13 +113,38 @@ Reply ONLY with valid JSON, no markdown, no explanation:
  * Check a user's German sentence with AI feedback.
  * Returns { status: 'correct'|'minor_errors'|'incorrect', feedback: string }
  */
-export async function checkSentence(word, sentence) {
+export async function checkSentence(word, sentence, lang = 'en') {
+  const langName = lang === 'pl' ? 'Polish' : 'English'
   const prompt = `You are a German teacher. The student wrote this sentence using the word "${word}": "${sentence}"
 Check grammar and word usage. Reply ONLY with valid JSON, no markdown:
-{"status":"correct or minor_errors or incorrect","feedback":"Short comment in Russian (2-3 sentences)."}`
+{"status":"correct or minor_errors or incorrect","feedback":"Short comment in ${langName} (2-3 sentences)."}`
 
   const text = await callGroq(prompt, 0.2)
 
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
   return JSON.parse(cleaned)
+}
+
+const conjCache = {}
+
+export async function fetchConjugation(wordObj) {
+  const { id } = wordObj
+  if (conjCache[id]) return conjCache[id]
+
+  try {
+    const lsKey = `conj_${id}`
+    const cached = localStorage.getItem(lsKey)
+    if (cached) {
+      conjCache[id] = JSON.parse(cached)
+      return conjCache[id]
+    }
+  } catch {}
+
+  const res = await fetch(`/api/conjugate?id=${wordObj.id}&word=${encodeURIComponent(wordObj.word)}`)
+  if (!res.ok) throw new Error('Conjugation fetch failed')
+  const { conjugation } = await res.json()
+
+  conjCache[id] = conjugation
+  try { localStorage.setItem(`conj_${id}`, JSON.stringify(conjugation)) } catch {}
+  return conjugation
 }

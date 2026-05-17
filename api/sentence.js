@@ -3,6 +3,8 @@
  * Generates a German sentence using the provided word.
  */
 
+import { checkRateLimit } from './_rateLimit.js'
+
 // Strips ```json ... ``` markdown fences that Gemini sometimes adds
 function parseJSON(text) {
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
@@ -12,19 +14,20 @@ function parseJSON(text) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method === 'OPTIONS') return res.status(200).end()
+  if (!checkRateLimit(req, res, 20)) return
 
-  const { word } = req.query
+  const { word, lang = 'en' } = req.query
   if (!word) return res.status(400).json({ error: 'Missing word' })
 
   const apiKey = process.env.GOOGLE_API_KEY
   if (!apiKey) return res.status(500).json({ error: 'GOOGLE_API_KEY not set' })
 
-  const prompt = `Ты — преподаватель немецкого. Составь ОДНО простое, естественное предложение на немецком языке (уровень A1-A2), которое включает слово "${word}". 
-Предложение должно быть осмысленным, но не слишком длинным (до 8 слов).
-Также дай его точный перевод на русский язык.
+  const langName = lang === 'pl' ? 'Polish' : 'English'
+  const prompt = `You are a German teacher. Create ONE simple, natural German sentence (A1-A2 level, max 8 words) using the word "${word}".
+Also give its exact ${langName} translation.
 
-Ответь ТОЛЬКО в формате JSON, без маркдауна, без пояснений:
-{"german": "Предложение на немецком.", "russian": "Перевод на русский."}`
+Reply ONLY in JSON format, no markdown, no explanation:
+{"german": "German sentence here.", "translation": "${langName} translation here."}`
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
