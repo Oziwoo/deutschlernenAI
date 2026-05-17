@@ -16,6 +16,21 @@ const strings = {
   nav_theme_toggle:  { en: 'Toggle theme',pl: 'Zmień motyw' },
   nav_lang_toggle:   { en: 'Language',    pl: 'Język'       },
 
+  // ── AuthModal ─────────────────────────────────────────────────────
+  auth_login_title:  { en: 'Sign in',                          pl: 'Zaloguj się'                         },
+  auth_reg_title:    { en: 'Create account',                   pl: 'Utwórz konto'                        },
+  auth_password:     { en: 'Password',                         pl: 'Hasło'                               },
+  auth_loading:      { en: 'Loading…',                         pl: 'Ładowanie…'                          },
+  auth_login_btn:    { en: 'Sign in',                          pl: 'Zaloguj się'                         },
+  auth_reg_btn:      { en: 'Create account',                   pl: 'Utwórz konto'                        },
+  auth_to_reg:       { en: 'No account? Register',             pl: 'Nie masz konta? Zarejestruj się'     },
+  auth_to_login:     { en: 'Already have an account? Sign in', pl: 'Masz konto? Zaloguj się'             },
+  auth_confirm_sent: { en: 'Confirmation email sent. Check your inbox.', pl: 'Email potwierdzający wysłany. Sprawdź skrzynkę.' },
+  auth_error:        { en: 'An error occurred',                pl: 'Wystąpił błąd'                       },
+
+  // ── App loading ───────────────────────────────────────────────────
+  app_loading:       { en: 'Loading progress…',                pl: 'Ładowanie postępu…'                  },
+
   // ── Dashboard ─────────────────────────────────────────────────────
   dash_welcome:      { en: 'Welcome!',               pl: 'Witaj!'                    },
   dash_keep_going:   { en: 'Keep learning!',          pl: 'Ucz się dalej!'            },

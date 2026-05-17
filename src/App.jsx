@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useSession }   from './hooks/useSession'
 import { useProgress }  from './hooks/useProgress'
 import { useWords }     from './hooks/useWords'
+import { useLanguage }  from './hooks/useLanguage'
+import { t }            from './i18n/translations'
 import Navigation          from './components/Navigation'
 import Dashboard           from './components/Dashboard'
 import LearnMode           from './components/LearnMode'
@@ -12,6 +14,7 @@ import ListeningMode       from './components/ListeningMode'
 import ErrorBoundary       from './components/ErrorBoundary'
 
 export default function App() {
+  const { lang } = useLanguage()
   const { sessionId, user, loading: sessionLoading } = useSession()
   const { words, fetchCustomWords } = useWords(sessionId, user)
   const { progressMap, updateProgress, loading: progressLoading, stats } =
@@ -31,7 +34,7 @@ export default function App() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
             </svg>
-            Загружаем прогресс…
+            {t('app_loading', lang)}
           </div>
         </div>
       </div>
