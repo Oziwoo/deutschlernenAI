@@ -63,7 +63,7 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
     if (cache.current[word.id]) { setExpl(cache.current[word.id]); return }
     setLoadExpl(true)
     setExpl(null)
-    const text = await fetchExplanation(word)
+    const text = await fetchExplanation(word, lang)
     cache.current[word.id] = text
     setExpl(text)
     setLoadExpl(false)

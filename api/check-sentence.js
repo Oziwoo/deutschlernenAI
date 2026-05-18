@@ -3,6 +3,8 @@
  * Checks user's sentence and provides feedback.
  */
 
+const LANG_NAMES = { en: 'English', pl: 'Polish' }
+
 function parseJSON(text) {
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
   return JSON.parse(cleaned)
@@ -12,14 +14,15 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method === 'OPTIONS') return res.status(200).end()
 
-  // Support both JSON body (POST) and query params (GET)
-  let word, sentence
+  let word, sentence, lang
   if (req.method === 'POST' && req.body) {
-    word = req.body.word
+    word     = req.body.word
     sentence = req.body.sentence
+    lang     = req.body.lang || 'en'
   } else {
-    word = req.query.word
+    word     = req.query.word
     sentence = req.query.sentence
+    lang     = req.query.lang || 'en'
   }
 
   if (!word || !sentence) return res.status(400).json({ error: 'Missing word or sentence' })
@@ -27,10 +30,12 @@ export default async function handler(req, res) {
   const apiKey = process.env.GOOGLE_API_KEY
   if (!apiKey) return res.status(500).json({ error: 'GOOGLE_API_KEY not set' })
 
-  const prompt = `Ты — преподаватель немецкого языка. Твой ученик составил предложение со словом "${word}": "${sentence}"
+  const langName = LANG_NAMES[lang] || 'English'
 
-Проверь грамматику и использование слова. Ответь ТОЛЬКО в формате JSON, без маркдауна:
-{"status": "correct" или "minor_errors" или "incorrect", "feedback": "Комментарий на русском (2-3 предложения)."}`
+  const prompt = `You are a German language teacher. Your student wrote this sentence using the word "${word}": "${sentence}"
+
+Check grammar and word usage. Reply ONLY in JSON format, no markdown:
+{"status": "correct" or "minor_errors" or "incorrect", "feedback": "Comment in ${langName} (2-3 sentences)."}`
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`

@@ -3,42 +3,65 @@
  * Takes a word and returns structured data using Gemini
  */
 
+const LANG_NAMES = { en: 'English', pl: 'Polish' }
+
+const CATEGORIES_EN = `art (Articles / Pronouns)
+con (Conjunctions / Prepositions / Particles)
+vb1 (Core Verbs)
+vb2 (Extended Verbs)
+ppl (People / Family)
+plc (Places / Buildings)
+tim (Time)
+obj (Objects / Things)
+abs (Abstract Concepts)
+bod (Body / Health)
+fod (Food / Drinks)
+nat (Nature / Environment)
+tec (Technology / Media)
+adj (Adjectives)
+adv (Adverbs / Numbers)`
+
+const CATEGORIES_PL = `art (Rodzajniki / Zaimki)
+con (Spójniki / Przyimki / Partykuły)
+vb1 (Podstawowe czasowniki)
+vb2 (Dodatkowe czasowniki)
+ppl (Ludzie / Rodzina)
+plc (Miejsca / Budynki)
+tim (Czas)
+obj (Przedmioty / Rzeczy)
+abs (Pojęcia abstrakcyjne)
+bod (Ciało / Zdrowie)
+fod (Jedzenie / Napoje)
+nat (Natura / Środowisko)
+tec (Technologia / Media)
+adj (Przymiotniki)
+adv (Przysłówki / Liczby)`
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method === 'OPTIONS') return res.status(200).end()
 
-  const { word } = req.query
+  const { word, lang = 'en' } = req.query
   if (!word) return res.status(400).json({ error: 'Missing word' })
 
   const apiKey = process.env.GOOGLE_API_KEY
   if (!apiKey) return res.status(500).json({ error: 'GOOGLE_API_KEY not set' })
 
-  const prompt = `Ты — эксперт по немецкому языку. Пользователь хочет добавить слово "${word}" в свой словарь.
-Определи его базовую форму, артикль (если это существительное), самую подходящую категорию из списка ниже и краткий перевод на русский язык.
+  const langName = LANG_NAMES[lang] || 'English'
+  const categoryList = lang === 'pl' ? CATEGORIES_PL : CATEGORIES_EN
 
-Возможные категории (выбери строго один ключ):
-art (Артикли / Местоимения)
-con (Союзы / Предлоги / Частицы)
-vb1 (Основные глаголы)
-vb2 (Дополнительные глаголы)
-ppl (Люди / Семья)
-plc (Места / Здания)
-tim (Время)
-obj (Предметы / Вещи)
-abs (Абстрактные понятия)
-bod (Тело / Здоровье)
-fod (Еда / Напитки)
-nat (Природа / Среда)
-tec (Технологии / Медиа)
-adj (Прилагательные)
-adv (Наречия / Числа)
+  const prompt = `You are a German language expert. The user wants to add the word "${word}" to their dictionary.
+Determine its base form, article (if it's a noun), the most appropriate category from the list below, and a brief ${langName} translation.
 
-Ответь строго в формате JSON, без маркдауна, без других слов:
+Possible categories (choose exactly one key):
+${categoryList}
+
+Reply strictly in JSON format, no markdown, no other text:
 {
-  "word": "Базовая форма слова (с заглавной буквы для существительных)",
+  "word": "Base form of the word (capitalize nouns)",
   "article": "der" | "die" | "das" | null,
-  "category": "выбранный ключ категории",
-  "translation": "краткий перевод"
+  "category": "chosen category key",
+  "translation": "brief ${langName} translation"
 }`
 
   try {
@@ -51,7 +74,7 @@ adv (Наречия / Числа)
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.1,
-          responseMimeType: "application/json"
+          responseMimeType: 'application/json'
         }
       }),
     })

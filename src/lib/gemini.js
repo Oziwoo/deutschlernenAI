@@ -1,19 +1,10 @@
-const CATEGORIES_RU = {
-  art: 'Артикли и местоимения', con: 'Союзы, предлоги, частицы',
-  vb1: 'Основные глаголы', vb2: 'Дополнительные глаголы',
-  ppl: 'Люди и семья', plc: 'Места и здания',
-  tim: 'Время', obj: 'Предметы и вещи',
-  abs: 'Абстрактные понятия', bod: 'Тело и здоровье',
-  fod: 'Еда и напитки', nat: 'Природа и среда',
-  tec: 'Технологии и медиа', adj: 'Прилагательные',
-  adv: 'Наречия и числа',
-}
+const LANG_NAMES = { en: 'English', pl: 'Polish' }
 
 const memoryCache = {}
 
 async function callGroq(prompt, temperature = 0.7) {
   const apiKey = import.meta.env.VITE_GOOGLE_API_KEY
-  if (!apiKey) throw new Error('VITE_GOOGLE_API_KEY не задан')
+  if (!apiKey) throw new Error('VITE_GOOGLE_API_KEY not set')
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -34,24 +25,24 @@ async function callGroq(prompt, temperature = 0.7) {
   return data.choices?.[0]?.message?.content || ''
 }
 
-export async function fetchExplanation(wordObj) {
-  const { id, word, article, category } = wordObj
+export async function fetchExplanation(wordObj, lang = 'en') {
+  const { id, word, article } = wordObj
+  const cacheKey = `${id}_${lang}`
 
-  if (memoryCache[id]) return memoryCache[id]
+  if (memoryCache[cacheKey]) return memoryCache[cacheKey]
 
   const apiKey = import.meta.env.VITE_GOOGLE_API_KEY
-  if (!apiKey) return 'Ошибка: добавь VITE_GOOGLE_API_KEY в файл .env и перезапусти сервер'
+  if (!apiKey) return 'Error: add VITE_GOOGLE_API_KEY to .env and restart server'
 
-  const articlePart = article ? `с артиклем "${article}"` : ''
-  const catName = CATEGORIES_RU[category] || category
-  const isNoun = !!article
+  const articlePart = article ? `with article "${article}"` : ''
+  const langName = LANG_NAMES[lang] || 'English'
 
-  const prompt = `Ты — преподаватель немецкого языка. Для слова "${word}" ${articlePart} дай ровно 3 примера использования.
+  const prompt = `You are a German language teacher. For the word "${word}" ${articlePart}, give exactly 3 usage examples.
 
-Формат каждого примера:
-🔹 Немецкое предложение — краткий русский комментарий что происходит в этой ситуации (не переводи само слово "${word}")
+Format each example as:
+🔹 German sentence — short ${langName} comment describing what is happening in that situation (do not translate the word "${word}" itself)
 
-Только 3 примера, никакого дополнительного текста. Примеры должны показывать разные контексты использования слова.`
+Only 3 examples, no additional text. Show different usage contexts.`
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -72,36 +63,36 @@ export async function fetchExplanation(wordObj) {
 
     if (!res.ok) {
       console.error('Groq error:', data)
-      return `Ошибка Groq: ${data?.error?.message || 'проверь API ключ'}`
+      return `Groq error: ${data?.error?.message || 'check API key'}`
     }
 
-    const explanation = data.choices?.[0]?.message?.content
-      || 'Объяснение недоступно.'
+    const explanation = data.choices?.[0]?.message?.content || 'Explanation unavailable.'
 
-    memoryCache[id] = explanation
+    memoryCache[cacheKey] = explanation
     return explanation
 
   } catch (err) {
     console.error('fetchExplanation error:', err)
-    return 'Не удалось загрузить объяснение. Проверь подключение к интернету.'
+    return 'Could not load explanation. Check your internet connection.'
   }
 }
 
 /**
  * Generate a simple German sentence with the given word.
- * Returns { german, russian } or throws on error.
+ * Returns { german, translation } or throws on error.
  */
-export async function fetchSentence(word) {
-  const cacheKey = `sentence_${word}`
+export async function fetchSentence(word, lang = 'en') {
+  const cacheKey = `sentence_${word}_${lang}`
   if (memoryCache[cacheKey]) return memoryCache[cacheKey]
 
-  const prompt = `You are a German teacher. Create ONE simple German sentence (A1-A2 level, max 8 words) using the word "${word}". Also give its exact Russian translation.
+  const langName = LANG_NAMES[lang] || 'English'
+
+  const prompt = `You are a German teacher. Create ONE simple German sentence (A1-A2 level, max 8 words) using the word "${word}". Also give its exact ${langName} translation.
 Reply ONLY with valid JSON, no markdown, no explanation:
-{"german":"German sentence here.","russian":"Russian translation here."}`
+{"german":"German sentence here.","translation":"${langName} translation here."}`
 
   const text = await callGroq(prompt, 0.7)
 
-  // Strip markdown fences if present
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
   const result = JSON.parse(cleaned)
 
@@ -113,10 +104,12 @@ Reply ONLY with valid JSON, no markdown, no explanation:
  * Check a user's German sentence with AI feedback.
  * Returns { status: 'correct'|'minor_errors'|'incorrect', feedback: string }
  */
-export async function checkSentence(word, sentence) {
+export async function checkSentence(word, sentence, lang = 'en') {
+  const langName = LANG_NAMES[lang] || 'English'
+
   const prompt = `You are a German teacher. The student wrote this sentence using the word "${word}": "${sentence}"
 Check grammar and word usage. Reply ONLY with valid JSON, no markdown:
-{"status":"correct or minor_errors or incorrect","feedback":"Short comment in Russian (2-3 sentences)."}`
+{"status":"correct or minor_errors or incorrect","feedback":"Short comment in ${langName} (2-3 sentences)."}`
 
   const text = await callGroq(prompt, 0.2)
 

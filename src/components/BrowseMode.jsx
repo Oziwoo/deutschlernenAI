@@ -23,7 +23,7 @@ function WordModal({ word, progress, onClose, lang }) {
   const load = useCallback(async () => {
     if (expl || loading) return
     setLoading(true)
-    const text = await fetchExplanation(word)
+    const text = await fetchExplanation(word, lang)
     setExpl(text)
     setLoading(false)
   }, [word, expl, loading])
