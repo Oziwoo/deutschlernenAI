@@ -3,7 +3,53 @@ import { useState } from 'react'
 import { CATEGORIES, CATEGORY_COLORS } from '../data/words'
 import { useLanguage } from '../hooks/useLanguage'
 import { t, getCategoryNames } from '../i18n/translations'
+import { getWeekHistory } from '../lib/studyHistory'
 import AddWordModal from './AddWordModal'
+
+function WeekChart({ lang }) {
+  const history = getWeekHistory()
+  const today = new Date().toISOString().slice(0, 10)
+  const max = Math.max(...history.map(d => d.count), 1)
+  const total = history.reduce((s, d) => s + d.count, 0)
+
+  if (total === 0) return null
+
+  return (
+    <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-4 transition-colors">
+      <div className="text-sm font-semibold text-stone-700 dark:text-stone-300 mb-3">
+        {t('dash_chart_title', lang)}
+      </div>
+      <div className="flex items-end gap-1.5 h-24">
+        {history.map(({ date, count }) => {
+          const isToday = date === today
+          const pct = count > 0 ? Math.max((count / max) * 100, 8) : 0
+          const dayLabel = new Date(date + 'T12:00:00').toLocaleDateString(
+            lang === 'pl' ? 'pl-PL' : 'en-GB',
+            { weekday: 'short' }
+          )
+          return (
+            <div key={date} className="flex flex-col items-center gap-1 flex-1 min-w-0">
+              {count > 0 && (
+                <div className={`text-[9px] font-medium ${isToday ? 'text-brand-600 dark:text-brand-400' : 'text-stone-400'}`}>
+                  {count}
+                </div>
+              )}
+              <div className="w-full flex items-end" style={{ height: '52px' }}>
+                <div
+                  className={`w-full rounded-t transition-all ${isToday ? 'bg-brand-500' : 'bg-stone-200 dark:bg-stone-700'}`}
+                  style={{ height: count > 0 ? `${pct}%` : '2px' }}
+                />
+              </div>
+              <div className={`text-[9px] font-medium truncate w-full text-center ${isToday ? 'text-brand-500' : 'text-stone-400'}`}>
+                {dayLabel}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 function StatCard({ value, label, color }) {
   return (
@@ -103,6 +149,9 @@ export default function Dashboard({ stats, progressMap, words, user, sessionId, 
         <StatCard value={`${pct}%`}      label={t('dash_stat_done', lang)}     color="#f59e0b" />
       </div>
 
+      {/* Weekly progress chart */}
+      <WeekChart lang={lang} />
+
       {/* Action buttons */}
       <div className="space-y-3">
         <ActionButton
@@ -117,6 +166,12 @@ export default function Dashboard({ stats, progressMap, words, user, sessionId, 
           icon="🧩"
           title={t('dash_action_sentence', lang)}
           subtitle={t('dash_action_sentence_sub', lang)}
+        />
+        <ActionButton
+          onClick={() => navigate('/listen')}
+          icon="🎧"
+          title={t('dash_action_listen', lang)}
+          subtitle={t('dash_action_listen_sub', lang)}
         />
         <ActionButton
           onClick={() => navigate('/quiz')}

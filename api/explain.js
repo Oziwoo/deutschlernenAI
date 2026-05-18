@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit } from './_rateLimit.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL         || 'https://placeholder.supabase.co',
@@ -31,6 +32,7 @@ const CATEGORIES_RU = {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method === 'OPTIONS') return res.status(200).end()
+  if (!checkRateLimit(req, res, 30)) return
 
   const { id, word, article, category } = req.query
   if (!word || !id) return res.status(400).json({ error: 'Missing params' })

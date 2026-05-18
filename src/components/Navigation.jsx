@@ -13,10 +13,11 @@ export default function Navigation({ stats, user }) {
   const pct = Math.round((stats.mastered / 1000) * 100)
 
   const links = [
-    { to: '/',       label: t('nav_home', lang),   icon: '⌂' },
-    { to: '/learn',  label: t('nav_learn', lang),  icon: '🎴' },
-    { to: '/quiz',   label: t('nav_quiz', lang),   icon: '⚡' },
-    { to: '/browse', label: t('nav_browse', lang), icon: '📖' },
+    { to: '/',                label: t('nav_home', lang),   icon: '⌂' },
+    { to: '/learn',           label: t('nav_learn', lang),  icon: '🎴' },
+    { to: '/listen',          label: t('nav_listen', lang), icon: '🎧' },
+    { to: '/quiz',            label: t('nav_quiz', lang),   icon: '⚡' },
+    { to: '/browse',          label: t('nav_browse', lang), icon: '📖' },
   ]
 
   const handleLogout = async () => {
@@ -40,7 +41,7 @@ export default function Navigation({ stats, user }) {
 
           {/* Nav links and tools */}
           <div className="flex items-center gap-2">
-            <nav className="flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-1">
               {links.map(l => (
                 <NavLink
                   key={l.to}
@@ -58,8 +59,8 @@ export default function Navigation({ stats, user }) {
                 </NavLink>
               ))}
             </nav>
-            
-            <div className="w-px h-5 bg-stone-200 dark:bg-stone-700 mx-1"></div>
+
+            <div className="hidden md:block w-px h-5 bg-stone-200 dark:bg-stone-700 mx-1"></div>
 
             {/* Language toggle */}
             <button
@@ -112,6 +113,28 @@ export default function Navigation({ stats, user }) {
       </div>
 
       <AuthModal isOpen={isAuthOpen} onClose={() => setAuthOpen(false)} />
+
+      {/* Mobile bottom navigation */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 safe-area-bottom">
+        <div className="flex justify-around py-1.5">
+          {links.map(l => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.to === '/'}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition-colors ` +
+                (isActive
+                  ? 'text-brand-600 dark:text-brand-400'
+                  : 'text-stone-400 dark:text-stone-500')
+              }
+            >
+              <span className="text-xl leading-none">{l.icon}</span>
+              <span>{l.label}</span>
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </header>
   )
 }

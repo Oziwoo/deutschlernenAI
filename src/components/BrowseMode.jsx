@@ -5,9 +5,59 @@ import { speakGerman } from '../lib/tts'
 import { useLanguage } from '../hooks/useLanguage'
 import { t, getCategoryNames } from '../i18n/translations'
 
+function ConjugationTable({ data, lang }) {
+  const rows = [
+    ['ich',       data.praesens?.ich  || ''],
+    ['du',        data.praesens?.du   || ''],
+    ['er/sie/es', data.praesens?.er   || ''],
+    ['wir',       data.praesens?.wir  || ''],
+    ['ihr',       data.praesens?.ihr  || ''],
+    ['sie/Sie',   data.praesens?.sie  || ''],
+  ]
+  return (
+    <div className="mt-4 border-t border-stone-100 dark:border-stone-800 pt-4 space-y-3">
+      <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">{t('browse_praesens', lang)}</div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        {rows.map(([pronoun, form]) => (
+          <div key={pronoun} className="flex items-center gap-2 text-sm">
+            <span className="text-stone-400 w-16 shrink-0">{pronoun}</span>
+            <span className="font-medium text-stone-800 dark:text-stone-200">{form}</span>
+          </div>
+        ))}
+      </div>
+      {data.perfekt && (
+        <div className="text-sm">
+          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">{t('browse_perfekt', lang)}</span>
+          <span className="font-medium text-stone-800 dark:text-stone-200">{data.perfekt}</span>
+        </div>
+      )}
+      {data.praeteritum && (
+        <div className="text-sm">
+          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">{t('browse_praeteritum', lang)}</span>
+          <span className="font-medium text-stone-800 dark:text-stone-200">
+            ich {data.praeteritum.ich} · er {data.praeteritum.er}
+          </span>
+        </div>
+      )}
+      {data.imperativ && (
+        <div className="text-sm">
+          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">{t('browse_imperativ', lang)}</span>
+          <span className="font-medium text-stone-800 dark:text-stone-200">
+            {[data.imperativ.du, data.imperativ.ihr, data.imperativ.Sie].filter(Boolean).join(' · ')}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function WordModal({ word, progress, onClose, lang }) {
-  const [expl, setExpl]       = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [expl, setExpl]         = useState(null)
+  const [loading, setLoading]   = useState(false)
+  const [conj, setConj]         = useState(null)
+  const [loadingConj, setLoadingConj] = useState(false)
+  const [conjError, setConjError] = useState(false)
+  const isVerb = ['vb1', 'vb2'].includes(word.category)
   const catColor  = CATEGORY_COLORS[word.category]
   const catNames  = getCategoryNames(lang)
   const statusKey = progress?.status || 'new'
@@ -26,6 +76,20 @@ function WordModal({ word, progress, onClose, lang }) {
     setExpl(text)
     setLoading(false)
   }, [word, expl, loading])
+
+  const loadConj = useCallback(async () => {
+    if (conj || loadingConj) return
+    setLoadingConj(true)
+    setConjError(false)
+    try {
+      const data = await fetchConjugation(word)
+      setConj(data)
+    } catch {
+      setConjError(true)
+    } finally {
+      setLoadingConj(false)
+    }
+  }, [word, conj, loadingConj])
 
   // Word translation
   const translation = lang === 'pl' ? word.pl : word.en
@@ -87,6 +151,27 @@ function WordModal({ word, progress, onClose, lang }) {
             </div>
           )}
           {expl && <div className="text-stone-700 dark:text-stone-300 leading-relaxed text-sm whitespace-pre-wrap">{expl}</div>}
+
+          {/* Conjugation section for verbs */}
+          {isVerb && !conj && !loadingConj && (
+            <button onClick={loadConj}
+              className="mt-4 w-full py-2.5 border border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 rounded-xl text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-800 hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
+              {t('browse_conj_show', lang)}
+            </button>
+          )}
+          {isVerb && loadingConj && (
+            <div className="flex items-center gap-2 text-stone-400 py-3 text-sm">
+              <svg className="animate-spin w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              {t('browse_conj_loading', lang)}
+            </div>
+          )}
+          {isVerb && conjError && (
+            <div className="mt-3 text-sm text-rose-500">{t('browse_conj_error', lang)}</div>
+          )}
+          {isVerb && conj && <ConjugationTable data={conj} lang={lang} />}
         </div>
 
         {progress && (

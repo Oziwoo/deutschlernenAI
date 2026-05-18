@@ -10,6 +10,8 @@ import LearnMode        from './components/LearnMode'
 import QuizMode         from './components/QuizMode'
 import BrowseMode       from './components/BrowseMode'
 import SentenceBuilderMode from './components/SentenceBuilderMode'
+import ListeningMode       from './components/ListeningMode'
+import ErrorBoundary       from './components/ErrorBoundary'
 
 export default function App() {
   const { lang } = useLanguage()
@@ -44,15 +46,18 @@ export default function App() {
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 transition-colors">
       <Navigation stats={stats} user={user} />
-      <main className="max-w-4xl mx-auto px-4 pb-20">
-        <Routes>
-          <Route path="/"                 element={<Dashboard    {...shared} />} />
-          <Route path="/learn"            element={<LearnMode     {...shared} />} />
-          <Route path="/sentence-builder" element={<SentenceBuilderMode {...shared} />} />
-          <Route path="/quiz"             element={<QuizMode      {...shared} />} />
-          <Route path="/browse"           element={<BrowseMode    {...shared} />} />
-          <Route path="*"                 element={<Navigate to="/" replace />} />
-        </Routes>
+      <main className="max-w-4xl mx-auto px-4 pb-24">
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/"                 element={<Dashboard           {...shared} />} />
+            <Route path="/learn"            element={<LearnMode           {...shared} />} />
+            <Route path="/listen"           element={<ListeningMode       {...shared} />} />
+            <Route path="/sentence-builder" element={<SentenceBuilderMode {...shared} />} />
+            <Route path="/quiz"             element={<QuizMode            {...shared} />} />
+            <Route path="/browse"           element={<BrowseMode          {...shared} />} />
+            <Route path="*"                 element={<Navigate to="/" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   )

@@ -3,6 +3,8 @@
  * Checks user's sentence and provides feedback.
  */
 
+import { checkRateLimit } from './_rateLimit.js'
+
 function parseJSON(text) {
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
   return JSON.parse(cleaned)
@@ -11,6 +13,7 @@ function parseJSON(text) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method === 'OPTIONS') return res.status(200).end()
+  if (!checkRateLimit(req, res, 20)) return
 
   // Support both JSON body (POST) and query params (GET)
   let word, sentence
@@ -22,15 +25,20 @@ export default async function handler(req, res) {
     sentence = req.query.sentence
   }
 
+  let lang = 'en'
+  if (req.method === 'POST' && req.body) lang = req.body.lang || 'en'
+  else lang = req.query.lang || 'en'
+
   if (!word || !sentence) return res.status(400).json({ error: 'Missing word or sentence' })
 
   const apiKey = process.env.GOOGLE_API_KEY
   if (!apiKey) return res.status(500).json({ error: 'GOOGLE_API_KEY not set' })
 
-  const prompt = `Ты — преподаватель немецкого языка. Твой ученик составил предложение со словом "${word}": "${sentence}"
+  const langName = lang === 'pl' ? 'Polish' : 'English'
+  const prompt = `You are a German teacher. Your student wrote this sentence using the word "${word}": "${sentence}"
 
-Проверь грамматику и использование слова. Ответь ТОЛЬКО в формате JSON, без маркдауна:
-{"status": "correct" или "minor_errors" или "incorrect", "feedback": "Комментарий на русском (2-3 предложения)."}`
+Check grammar and word usage. Reply ONLY in JSON format, no markdown:
+{"status": "correct or minor_errors or incorrect", "feedback": "Comment in ${langName} (2-3 sentences)."}`
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
