@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { CATEGORIES, CATEGORY_COLORS } from '../data/words'
-import { STATUS } from '../lib/srs'
 import { useLanguage } from '../hooks/useLanguage'
 import { t, getCategoryNames } from '../i18n/translations'
 import AddWordModal from './AddWordModal'

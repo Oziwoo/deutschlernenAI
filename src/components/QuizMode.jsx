@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { displayWord, CATEGORIES, CATEGORY_COLORS } from '../data/words'
+import { displayWord, CATEGORY_COLORS } from '../data/words'
 import { RATING, shuffle } from '../lib/srs'
 import { fetchExplanation } from '../lib/gemini'
 import { useLanguage } from '../hooks/useLanguage'
