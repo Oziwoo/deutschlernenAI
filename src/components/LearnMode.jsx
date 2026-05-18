@@ -6,6 +6,7 @@ import { fetchExplanation } from '../lib/gemini'
 import { speakGerman } from '../lib/tts'
 import { useLanguage } from '../hooks/useLanguage'
 import { t, getCategoryNames } from '../i18n/translations'
+import { useVoiceAnswer, VOICE_STATUS } from '../lib/useVoiceAnswer'
 
 function ArticleBadge({ article }) {
   if (!article) return null
@@ -44,6 +45,10 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
   const [score, setScore]           = useState({ good:0, hard:0, again:0 })
   const cache                       = useRef({})
 
+  const { status: voiceStatus, isSupported: voiceSupported, start: voiceStart, stop: voiceStop, reset: voiceReset } = useVoiceAnswer()
+  const [voiceMsg, setVoiceMsg]     = useState(null)
+  const autoRateRef                 = useRef(null)
+
   const RATINGS = [
     { value: RATING.AGAIN, label: t('learn_again', lang), sub: t('learn_again_sub', lang), cls: 'border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30' },
     { value: RATING.HARD,  label: t('learn_hard', lang),  sub: t('learn_hard_sub', lang),  cls: 'border-amber-300 dark:border-amber-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30' },
@@ -56,6 +61,16 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
     if (q.length === 0) setDone(true)
     else setQueue(q)
   }, [])
+
+  // Reset voice state whenever the card changes
+  useEffect(() => {
+    voiceReset()
+    setVoiceMsg(null)
+    clearTimeout(autoRateRef.current)
+  }, [index]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Abort any in-progress recognition on unmount
+  useEffect(() => () => { voiceReset(); clearTimeout(autoRateRef.current) }, []) // eslint-disable-line
 
   const currentWord = queue[index]
 
@@ -77,6 +92,7 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
 
   const handleRate = async (rating) => {
     if (!currentWord) return
+    clearTimeout(autoRateRef.current)
     setScore(s => ({
       good:  s.good  + (rating >= RATING.GOOD  ? 1 : 0),
       hard:  s.hard  + (rating === RATING.HARD  ? 1 : 0),
@@ -86,6 +102,24 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
     const next = index + 1
     if (next >= queue.length) setDone(true)
     else { setIndex(next); setFlipped(false); setExpl(null) }
+  }
+
+  const startVoice = () => {
+    setVoiceMsg(null)
+    voiceStart(
+      currentWord.word,
+      () => {
+        // Correct — flip the card and auto-advance after a beat
+        voiceReset()
+        clearTimeout(autoRateRef.current)
+        handleFlip()
+        autoRateRef.current = setTimeout(() => handleRate(RATING.GOOD), 1400)
+      },
+      (said) => {
+        // Incorrect — show what the user said; they can try again or flip manually
+        if (said) setVoiceMsg(said)
+      }
+    )
   }
 
   if (sessionDone) {
@@ -172,10 +206,43 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
             <div className="mt-2">
               <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusCls}`}>{statusLabel}</span>
             </div>
-            <button onClick={handleFlip}
-              className="mt-4 w-full py-3 bg-brand-500 text-white rounded-xl font-semibold hover:bg-brand-600 active:scale-95 transition-all">
-              {t('learn_show_expl', lang)}
-            </button>
+            <div className="mt-4 flex flex-col gap-2 w-full">
+              <div className="flex gap-2">
+                <button onClick={handleFlip}
+                  className="flex-1 py-3 bg-brand-500 text-white rounded-xl font-semibold hover:bg-brand-600 active:scale-95 transition-all">
+                  {t('learn_show_expl', lang)}
+                </button>
+                {voiceSupported && (
+                  <button
+                    onClick={voiceStatus === VOICE_STATUS.LISTENING ? voiceStop : startVoice}
+                    className={`flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border-2 font-medium transition-all active:scale-95 ${
+                      voiceStatus === VOICE_STATUS.LISTENING
+                        ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-500'
+                        : voiceStatus === VOICE_STATUS.ERROR
+                        ? 'border-red-300 bg-red-50 dark:bg-red-900/20 text-red-500 animate-shake'
+                        : 'border-stone-200 dark:border-stone-700 text-stone-500 hover:border-brand-300 hover:text-brand-500'
+                    }`}
+                  >
+                    {voiceStatus === VOICE_STATUS.LISTENING ? (
+                      <>
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                        <span className="text-xs whitespace-nowrap">{t('voice_listen', lang)}</span>
+                      </>
+                    ) : (
+                      <span className="text-lg leading-none">🎤</span>
+                    )}
+                  </button>
+                )}
+              </div>
+              {!voiceSupported && (
+                <p className="text-xs text-center text-stone-400">{t('voice_no_support', lang)}</p>
+              )}
+              {voiceMsg && (
+                <p className="text-xs text-center text-red-500 animate-fade-in">
+                  {t('voice_try_again', lang, { said: voiceMsg })}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Back */}

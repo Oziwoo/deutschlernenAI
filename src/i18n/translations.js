@@ -124,6 +124,11 @@ const strings = {
   sb_done_sub:       { en: 'Great work on sentence building.', pl: 'Świetna praca nad budowaniem zdań.' },
   sb_home:           { en: 'Home',                  pl: 'Start'                    },
 
+  // ── Voice Answer ──────────────────────────────────────────────────
+  voice_listen:      { en: 'Listening…',                              pl: 'Słucham…'                                   },
+  voice_try_again:   { en: 'You said: "{said}". Try again!',         pl: 'Powiedziałeś: "{said}". Spróbuj ponownie!'  },
+  voice_no_support:  { en: 'Voice input not supported in this browser', pl: 'Przeglądarka nie obsługuje rozpoznawania głosu' },
+
   // ── Categories ────────────────────────────────────────────────────
   cat_art:  { en: 'Articles / Pronouns',          pl: 'Rodzajniki / Zaimki'      },
   cat_con:  { en: 'Conjunctions / Prepositions',  pl: 'Spójniki / Przyimki'      },
