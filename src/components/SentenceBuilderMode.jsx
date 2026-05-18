@@ -44,7 +44,7 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
       setFeedback(null)
       setApiError(false)
       try {
-        const data = await fetchSentence(currentWord.word)
+        const data = await fetchSentence(currentWord.word, lang)
         if (cancelled) return
         setSentenceData(data)
         const tokens = data.german.replace(/[.!?]$/, '').split(' ').map(t => t.trim()).filter(Boolean)
@@ -86,7 +86,7 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
     const target  = sentenceData.german.replace(/[.!?]$/, '')
     if (current === target) {
       speakGerman(sentenceData.german)
-      setFeedback({ status: 'correct', message: '📖 ' + sentenceData.russian })
+      setFeedback({ status: 'correct', message: '📖 ' + sentenceData.translation })
     } else {
       setBlockError(true)
       setTimeout(() => setBlockError(false), 600)
@@ -97,7 +97,7 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
     if (!freeInput.trim() || loadingCheck) return
     setLoadingCheck(true)
     try {
-      const data = await checkSentence(currentWord.word, freeInput.trim())
+      const data = await checkSentence(currentWord.word, freeInput.trim(), lang)
       setFeedback({ status: data.status, message: data.feedback })
       if (data.status === 'correct' || data.status === 'minor_errors') speakGerman(freeInput.trim())
     } catch (err) {
@@ -174,7 +174,7 @@ export default function SentenceBuilderMode({ words, progressMap, updateProgress
               {mode === 'blocks' ? t('sb_prompt_blocks', lang) : t('sb_prompt_free', lang)}
             </div>
             {mode === 'blocks' ? (
-              <div className="text-xl font-medium text-stone-900 dark:text-white leading-tight">{sentenceData?.russian}</div>
+              <div className="text-xl font-medium text-stone-900 dark:text-white leading-tight">{sentenceData?.translation}</div>
             ) : (
               <div className="text-2xl font-bold text-stone-900 dark:text-white">{currentWord.word}</div>
             )}

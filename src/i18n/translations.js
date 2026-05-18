@@ -4,6 +4,19 @@
  */
 
 const strings = {
+  // ── App / Global ─────────────────────────────────────────────────
+  loading:            { en: 'Loading progress…',  pl: 'Ładowanie postępu…' },
+
+  // ── AddWordModal ──────────────────────────────────────────────────
+  add_title:          { en: 'Add word',            pl: 'Dodaj słowo'        },
+  add_desc:           { en: 'Enter a German word. AI will automatically determine the article, category and add it to your dictionary.', pl: 'Wpisz słowo niemieckie. AI automatycznie określi rodzajnik, kategorię i doda je do twojego słownika.' },
+  add_placeholder:    { en: 'E.g.: Schadenfreude', pl: 'Np.: Schadenfreude' },
+  add_recognizing:    { en: 'Recognizing...',      pl: 'Rozpoznaję...'      },
+  add_btn:            { en: 'Add',                 pl: 'Dodaj'              },
+  add_err_fetch:      { en: 'Could not get word data', pl: 'Nie udało się pobrać danych słowa' },
+  add_err_ai:         { en: 'AI could not recognize the word', pl: 'AI nie mogło rozpoznać słowa' },
+  add_err_generic:    { en: 'An error occurred while adding the word', pl: 'Wystąpił błąd podczas dodawania słowa' },
+
   // ── Navigation ────────────────────────────────────────────────────
   nav_home:          { en: 'Home',        pl: 'Start'       },
   nav_learn:         { en: 'Learn',       pl: 'Nauka'       },

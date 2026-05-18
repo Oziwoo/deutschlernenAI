@@ -34,7 +34,7 @@ export default function QuizMode({ progressMap, updateProgress, words }) {
   useEffect(() => {
     if (!current || explanations[current.id]) return
     let cancelled = false
-    fetchExplanation(current).then(text => {
+    fetchExplanation(current, lang).then(text => {
       if (!cancelled) setExpls(p => ({ ...p, [current.id]: text }))
     })
     return () => { cancelled = true }
