@@ -1,19 +1,10 @@
-const CATEGORIES_RU = {
-  art: 'Артикли и местоимения', con: 'Союзы, предлоги, частицы',
-  vb1: 'Основные глаголы', vb2: 'Дополнительные глаголы',
-  ppl: 'Люди и семья', plc: 'Места и здания',
-  tim: 'Время', obj: 'Предметы и вещи',
-  abs: 'Абстрактные понятия', bod: 'Тело и здоровье',
-  fod: 'Еда и напитки', nat: 'Природа и среда',
-  tec: 'Технологии и медиа', adj: 'Прилагательные',
-  adv: 'Наречия и числа',
-}
+const LANG_NAMES = { en: 'English', pl: 'Polish' }
 
 const memoryCache = {}
 
-async function callGroq(prompt, temperature = 0.7) {
+async function callGroq(prompt, temperature = 0.7, maxTokens = 300) {
   const apiKey = import.meta.env.VITE_GOOGLE_API_KEY
-  if (!apiKey) throw new Error('VITE_GOOGLE_API_KEY не задан')
+  if (!apiKey) throw new Error('VITE_GOOGLE_API_KEY is not set')
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -24,7 +15,7 @@ async function callGroq(prompt, temperature = 0.7) {
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 300,
+      max_tokens: maxTokens,
       temperature,
     }),
   })
@@ -34,24 +25,43 @@ async function callGroq(prompt, temperature = 0.7) {
   return data.choices?.[0]?.message?.content || ''
 }
 
-export async function fetchExplanation(wordObj) {
+/**
+ * Fetch 3 contextual examples for a German word.
+ * Output language follows `lang`.
+ */
+export async function fetchExplanation(wordObj, lang = 'en') {
   const { id, word, article, category } = wordObj
+  const langName = LANG_NAMES[lang] || 'English'
+  const cacheKey = `expl_${id}_${lang}`
 
-  if (memoryCache[id]) return memoryCache[id]
+  if (memoryCache[cacheKey]) return memoryCache[cacheKey]
 
   const apiKey = import.meta.env.VITE_GOOGLE_API_KEY
-  if (!apiKey) return 'Ошибка: добавь VITE_GOOGLE_API_KEY в файл .env и перезапусти сервер'
+  if (!apiKey) return lang === 'pl'
+    ? 'Błąd: dodaj VITE_GOOGLE_API_KEY do pliku .env i zrestartuj serwer.'
+    : 'Error: add VITE_GOOGLE_API_KEY to your .env file and restart the server.'
 
-  const articlePart = article ? `с артиклем "${article}"` : ''
-  const catName = CATEGORIES_RU[category] || category
-  const isNoun = !!article
+  const articlePart     = article ? `with article "${article}"` : ''
+  const isNoun          = !!article
+  const isPreposition   = category === 'con'
+  const grammarNote     = isNoun
+    ? 'State the plural form and key case forms.'
+    : isPreposition
+      ? 'State which cases (Dativ, Akkusativ, Genitiv) this word governs and how the meaning changes.'
+      : 'State the key grammatical forms (for verbs: Präsens and Perfekt).'
 
-  const prompt = `Ты — преподаватель немецкого языка. Для слова "${word}" ${articlePart} дай ровно 3 примера использования.
+  const prompt = `You are an experienced German language teacher.
 
-Формат каждого примера:
-🔹 Немецкое предложение — краткий русский комментарий что происходит в этой ситуации (не переводи само слово "${word}")
+Word: "${word}" ${articlePart}
 
-Только 3 примера, никакого дополнительного текста. Примеры должны показывать разные контексты использования слова.`
+Give exactly 3 usage examples sorted by difficulty (A1, A2, B1).
+Format each example as:
+🔹 German sentence — brief ${langName} comment about the situation (do NOT translate the word "${word}" directly)
+
+Grammar note: ${grammarNote}
+Add a short ${langName} grammar remark before the examples.
+
+Only 3 examples and the grammar remark. No other text. Write entirely in ${langName}.`
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -72,38 +82,41 @@ export async function fetchExplanation(wordObj) {
 
     if (!res.ok) {
       console.error('Groq error:', data)
-      return `Ошибка Groq: ${data?.error?.message || 'проверь API ключ'}`
+      return lang === 'pl'
+        ? `Błąd Groq: ${data?.error?.message || 'sprawdź klucz API'}`
+        : `Groq error: ${data?.error?.message || 'check your API key'}`
     }
 
     const explanation = data.choices?.[0]?.message?.content
-      || 'Объяснение недоступно.'
+      || (lang === 'pl' ? 'Wyjaśnienie niedostępne.' : 'Explanation unavailable.')
 
-    memoryCache[id] = explanation
+    memoryCache[cacheKey] = explanation
     return explanation
 
   } catch (err) {
     console.error('fetchExplanation error:', err)
-    return 'Не удалось загрузить объяснение. Проверь подключение к интернету.'
+    return lang === 'pl'
+      ? 'Nie udało się załadować wyjaśnienia. Sprawdź połączenie z internetem.'
+      : 'Could not load explanation. Check your internet connection.'
   }
 }
 
 /**
  * Generate a simple German sentence with the given word.
- * Returns { german, russian } or throws on error.
+ * Returns { german, translation } — translation is in the selected language.
  */
-export async function fetchSentence(word) {
-  const cacheKey = `sentence_${word}`
+export async function fetchSentence(word, lang = 'en') {
+  const langName = LANG_NAMES[lang] || 'English'
+  const cacheKey = `sentence_${word}_${lang}`
   if (memoryCache[cacheKey]) return memoryCache[cacheKey]
 
-  const prompt = `You are a German teacher. Create ONE simple German sentence (A1-A2 level, max 8 words) using the word "${word}". Also give its exact Russian translation.
+  const prompt = `You are a German teacher. Create ONE simple German sentence (A1-A2 level, max 8 words) using the word "${word}". Also give its exact ${langName} translation.
 Reply ONLY with valid JSON, no markdown, no explanation:
-{"german":"German sentence here.","russian":"Russian translation here."}`
+{"german":"German sentence here.","translation":"${langName} translation here."}`
 
-  const text = await callGroq(prompt, 0.7)
-
-  // Strip markdown fences if present
+  const text    = await callGroq(prompt, 0.7)
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
-  const result = JSON.parse(cleaned)
+  const result  = JSON.parse(cleaned)
 
   memoryCache[cacheKey] = result
   return result
@@ -112,37 +125,44 @@ Reply ONLY with valid JSON, no markdown, no explanation:
 /**
  * Evaluate a voice answer: compare what the user said to the target German word.
  * Returns { status: 'correct'|'close'|'incorrect', feedback: string }
+ * Feedback is in the selected language.
  */
-export async function checkVoiceAnswer(targetWord, spokenWord) {
-  const target = targetWord.toLowerCase().trim()
-  const spoken = spokenWord.toLowerCase().trim()
+export async function checkVoiceAnswer(targetWord, spokenWord, lang = 'en') {
+  const langName = LANG_NAMES[lang] || 'English'
+  const target   = targetWord.toLowerCase().trim()
+  const spoken   = spokenWord.toLowerCase().trim()
 
-  if (target === spoken) return { status: 'correct', feedback: 'Отлично! Слово произнесено правильно.' }
+  if (target === spoken) return {
+    status:   'correct',
+    feedback: lang === 'pl' ? 'Świetnie! Słowo wymówione poprawnie.' : 'Excellent! The word was spoken correctly.',
+  }
 
-  const cacheKey = `voice_${target}_${spoken}`
+  const cacheKey = `voice_${lang}_${target}_${spoken}`
   if (memoryCache[cacheKey]) return memoryCache[cacheKey]
 
-  const prompt = `Ты — преподаватель немецкого языка. Ученик должен был произнести слово "${targetWord}". Распознаватель речи зафиксировал: "${spokenWord}".
+  const prompt = `You are a German language teacher. The student was supposed to say the word "${targetWord}". The speech recogniser captured: "${spokenWord}".
 
-Оцени ответ одним из статусов:
-- correct — слово правильное (незначительная опечатка распознавания — всё равно correct)
-- close — почти правильно (похожее слово, 1-2 буквы или форма слова другая)
-- incorrect — совершенно другое слово
+Evaluate the answer with one of:
+- correct — the word is correct (minor recognition artefact — still mark correct)
+- close — almost correct (1-2 letters or a related word form)
+- incorrect — a completely different word
 
-Дай 1 короткое предложение фидбека на русском языке.
+Give 1 short feedback sentence in ${langName}.
 
-ТОЛЬКО JSON без markdown: {"status":"correct|close|incorrect","feedback":"..."}`
+ONLY JSON, no markdown: {"status":"correct|close|incorrect","feedback":"..."}`
 
   try {
-    const text = await callGroq(prompt, 0.1)
+    const text    = await callGroq(prompt, 0.1)
     const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
-    const result = JSON.parse(cleaned)
+    const result  = JSON.parse(cleaned)
     memoryCache[cacheKey] = result
     return result
   } catch {
     return {
-      status: 'incorrect',
-      feedback: `Вы сказали «${spokenWord}», а нужно «${targetWord}». Попробуйте ещё раз!`,
+      status:   'incorrect',
+      feedback: lang === 'pl'
+        ? `Powiedziałeś «${spokenWord}», a powinno być «${targetWord}». Spróbuj ponownie!`
+        : `You said «${spokenWord}», but it should be «${targetWord}». Try again!`,
     }
   }
 }
@@ -150,14 +170,15 @@ export async function checkVoiceAnswer(targetWord, spokenWord) {
 /**
  * Check a user's German sentence with AI feedback.
  * Returns { status: 'correct'|'minor_errors'|'incorrect', feedback: string }
+ * Feedback is in the selected language.
  */
-export async function checkSentence(word, sentence) {
-  const prompt = `You are a German teacher. The student wrote this sentence using the word "${word}": "${sentence}"
+export async function checkSentence(word, sentence, lang = 'en') {
+  const langName = LANG_NAMES[lang] || 'English'
+  const prompt   = `You are a German teacher. The student wrote this sentence using the word "${word}": "${sentence}"
 Check grammar and word usage. Reply ONLY with valid JSON, no markdown:
-{"status":"correct or minor_errors or incorrect","feedback":"Short comment in Russian (2-3 sentences)."}`
+{"status":"correct or minor_errors or incorrect","feedback":"Short comment in ${langName} (2-3 sentences)."}`
 
-  const text = await callGroq(prompt, 0.2)
-
+  const text    = await callGroq(prompt, 0.2)
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
   return JSON.parse(cleaned)
 }

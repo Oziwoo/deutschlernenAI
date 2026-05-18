@@ -4,6 +4,9 @@
  */
 
 const strings = {
+  // ── App shell ─────────────────────────────────────────────────────
+  app_loading:       { en: 'Loading progress…',   pl: 'Ładowanie postępu…'  },
+
   // ── Navigation ────────────────────────────────────────────────────
   nav_home:          { en: 'Home',        pl: 'Start'       },
   nav_learn:         { en: 'Learn',       pl: 'Nauka'       },

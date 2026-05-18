@@ -75,14 +75,15 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
   const currentWord = queue[index]
 
   const loadExpl = useCallback(async (word) => {
-    if (cache.current[word.id]) { setExpl(cache.current[word.id]); return }
+    const cacheKey = `${word.id}_${lang}`
+    if (cache.current[cacheKey]) { setExpl(cache.current[cacheKey]); return }
     setLoadExpl(true)
     setExpl(null)
-    const text = await fetchExplanation(word)
-    cache.current[word.id] = text
+    const text = await fetchExplanation(word, lang)
+    cache.current[cacheKey] = text
     setExpl(text)
     setLoadExpl(false)
-  }, [])
+  }, [lang])
 
   const handleFlip = () => {
     if (flipped) return
