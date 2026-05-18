@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { displayWord, CATEGORIES, CATEGORY_COLORS } from '../data/words'
-import { STATUS } from '../lib/srs'
+import { CATEGORY_COLORS } from '../data/words'
 import { fetchExplanation } from '../lib/gemini'
 import { speakGerman } from '../lib/tts'
 import { useLanguage } from '../hooks/useLanguage'
