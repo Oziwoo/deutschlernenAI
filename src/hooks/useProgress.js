@@ -2,34 +2,43 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { calculateNext, getStats } from '../lib/srs'
 
+const LS_KEY = 'dl_progress_v2'
+
+function loadLocal() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} }
+}
+
+function saveLocal(map) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(map)) } catch {}
+}
+
 export function useProgress(sessionId, user, words = []) {
-  const [progressMap, setProgressMap] = useState({})   // wordId → record
+  // Initialize immediately from localStorage — no async delay, always works
+  const [progressMap, setProgressMap] = useState(loadLocal)
   const [loading, setLoading]         = useState(true)
 
-  // Load all progress for this session or user
+  // Try to load from Supabase and merge (cloud is authoritative when available)
   useEffect(() => {
-    if (!sessionId && !user) return
+    if (!sessionId && !user) { setLoading(false); return }
 
     async function load() {
-      setLoading(true)
       try {
         let query = supabase.from('progress').select('*')
-        
-        if (user) {
-          query = query.eq('user_id', user.id)
-        } else {
-          query = query.eq('session_id', sessionId)
-        }
+        if (user)      query = query.eq('user_id',    user.id)
+        else if (sessionId) query = query.eq('session_id', sessionId)
 
         const { data, error } = await query
-
         if (error) throw error
 
-        const map = {}
-        ;(data || []).forEach(p => { map[p.word_id] = p })
-        setProgressMap(map)
+        if (data && data.length > 0) {
+          const map = {}
+          data.forEach(p => { map[p.word_id] = p })
+          setProgressMap(map)
+          saveLocal(map)
+        }
       } catch (err) {
-        console.error('Progress load error:', err)
+        console.warn('Supabase load failed, using local cache:', err.message)
+        // localStorage data already in state — nothing to do
       } finally {
         setLoading(false)
       }
@@ -38,14 +47,11 @@ export function useProgress(sessionId, user, words = []) {
     load()
   }, [sessionId, user])
 
-  // Update progress after a rating
   const updateProgress = useCallback(async (wordId, rating) => {
-    if (!sessionId && !user) return
-
     const current = progressMap[wordId] || { interval: 1, ease: 2.5, review_count: 0 }
     const next    = calculateNext(current, rating)
 
-    const upsertData = {
+    const record = {
       word_id:      wordId,
       status:       next.status,
       interval:     next.interval,
@@ -56,14 +62,19 @@ export function useProgress(sessionId, user, words = []) {
       updated_at:   new Date().toISOString(),
     }
 
-    if (user) {
-      upsertData.user_id = user.id
-    } else {
-      upsertData.session_id = sessionId
-    }
+    // Always persist locally first — works even without Supabase
+    const localRecord = { ...record, id: progressMap[wordId]?.id || `local-${wordId}` }
+    const newMap = { ...progressMap, [wordId]: localRecord }
+    setProgressMap(newMap)
+    saveLocal(newMap)
 
-    // Since we added unique(user_id, word_id) and unique(session_id, word_id),
-    // upsert will work correctly based on the unique constraint that matches.
+    // Then attempt cloud sync
+    if (!sessionId && !user) return
+
+    const upsertData = { ...record }
+    if (user)       upsertData.user_id    = user.id
+    else            upsertData.session_id = sessionId
+
     const onConflict = user ? 'user_id,word_id' : 'session_id,word_id'
 
     try {
@@ -75,11 +86,11 @@ export function useProgress(sessionId, user, words = []) {
 
       if (error) throw error
 
-      setProgressMap(prev => ({ ...prev, [wordId]: data }))
+      const synced = { ...newMap, [wordId]: data }
+      setProgressMap(synced)
+      saveLocal(synced)
     } catch (err) {
-      console.error('Progress update error:', err)
-      // Optimistic local update even if DB fails
-      setProgressMap(prev => ({ ...prev, [wordId]: { ...upsertData, id: `local-${wordId}` } }))
+      console.warn('Supabase sync failed, kept locally:', err.message)
     }
   }, [sessionId, user, progressMap])
 

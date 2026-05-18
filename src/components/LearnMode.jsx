@@ -46,8 +46,8 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
   const cache                       = useRef({})
 
   const { status: voiceStatus, isSupported: voiceSupported, start: voiceStart, stop: voiceStop, reset: voiceReset } = useVoiceAnswer()
-  const [voiceMsg, setVoiceMsg]     = useState(null)
-  const autoRateRef                 = useRef(null)
+  const [voiceResult, setVoiceResult] = useState(null) // { status, feedback, said }
+  const autoRateRef                   = useRef(null)
 
   const RATINGS = [
     { value: RATING.AGAIN, label: t('learn_again', lang), sub: t('learn_again_sub', lang), cls: 'border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30' },
@@ -65,7 +65,7 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
   // Reset voice state whenever the card changes
   useEffect(() => {
     voiceReset()
-    setVoiceMsg(null)
+    setVoiceResult(null)
     clearTimeout(autoRateRef.current)
   }, [index]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -105,21 +105,17 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
   }
 
   const startVoice = () => {
-    setVoiceMsg(null)
-    voiceStart(
-      currentWord.word,
-      () => {
-        // Correct — flip the card and auto-advance after a beat
-        voiceReset()
+    setVoiceResult(null)
+    voiceStart(currentWord.word, {
+      onCorrect: () => {
         clearTimeout(autoRateRef.current)
         handleFlip()
         autoRateRef.current = setTimeout(() => handleRate(RATING.GOOD), 1400)
       },
-      (said) => {
-        // Incorrect — show what the user said; they can try again or flip manually
-        if (said) setVoiceMsg(said)
-      }
-    )
+      onFeedback: (result) => {
+        setVoiceResult(result)
+      },
+    })
   }
 
   if (sessionDone) {
@@ -214,12 +210,16 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
                 </button>
                 {voiceSupported && (
                   <button
-                    onClick={voiceStatus === VOICE_STATUS.LISTENING ? voiceStop : startVoice}
-                    className={`flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border-2 font-medium transition-all active:scale-95 ${
+                    onClick={
+                      voiceStatus === VOICE_STATUS.LISTENING  ? voiceStop  :
+                      voiceStatus === VOICE_STATUS.EVALUATING ? undefined   : startVoice
+                    }
+                    disabled={voiceStatus === VOICE_STATUS.EVALUATING}
+                    className={`flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border-2 font-medium transition-all active:scale-95 disabled:cursor-wait ${
                       voiceStatus === VOICE_STATUS.LISTENING
                         ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-500'
-                        : voiceStatus === VOICE_STATUS.ERROR
-                        ? 'border-red-300 bg-red-50 dark:bg-red-900/20 text-red-500 animate-shake'
+                        : voiceStatus === VOICE_STATUS.EVALUATING
+                        ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20 text-blue-500'
                         : 'border-stone-200 dark:border-stone-700 text-stone-500 hover:border-brand-300 hover:text-brand-500'
                     }`}
                   >
@@ -227,6 +227,14 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
                       <>
                         <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
                         <span className="text-xs whitespace-nowrap">{t('voice_listen', lang)}</span>
+                      </>
+                    ) : voiceStatus === VOICE_STATUS.EVALUATING ? (
+                      <>
+                        <svg className="animate-spin w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                        <span className="text-xs whitespace-nowrap">{t('voice_evaluating', lang)}</span>
                       </>
                     ) : (
                       <span className="text-lg leading-none">🎤</span>
@@ -237,10 +245,19 @@ export default function LearnMode({ progressMap, updateProgress, words }) {
               {!voiceSupported && (
                 <p className="text-xs text-center text-stone-400">{t('voice_no_support', lang)}</p>
               )}
-              {voiceMsg && (
-                <p className="text-xs text-center text-red-500 animate-fade-in">
-                  {t('voice_try_again', lang, { said: voiceMsg })}
-                </p>
+              {voiceResult && (
+                <div className={`flex flex-col gap-1 px-3 py-2 rounded-xl text-xs animate-fade-in ${
+                  voiceResult.status === 'close'
+                    ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
+                    : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                }`}>
+                  <span className="font-semibold">
+                    {voiceResult.status === 'close' ? '⚠️' : '❌'} {voiceResult.feedback}
+                  </span>
+                  {voiceResult.said && (
+                    <span className="opacity-70">Распознано: «{voiceResult.said}»</span>
+                  )}
+                </div>
               )}
             </div>
           </div>

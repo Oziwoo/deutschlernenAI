@@ -125,8 +125,9 @@ const strings = {
   sb_home:           { en: 'Home',                  pl: 'Start'                    },
 
   // ── Voice Answer ──────────────────────────────────────────────────
-  voice_listen:      { en: 'Listening…',                              pl: 'Słucham…'                                   },
-  voice_try_again:   { en: 'You said: "{said}". Try again!',         pl: 'Powiedziałeś: "{said}". Spróbuj ponownie!'  },
+  voice_listen:      { en: 'Listening…',                              pl: 'Słucham…'                                       },
+  voice_evaluating:  { en: 'Analyzing…',                             pl: 'Analizuję…'                                     },
+  voice_try_again:   { en: 'You said: "{said}". Try again!',         pl: 'Powiedziałeś: "{said}". Spróbuj ponownie!'      },
   voice_no_support:  { en: 'Voice input not supported in this browser', pl: 'Przeglądarka nie obsługuje rozpoznawania głosu' },
 
   // ── Categories ────────────────────────────────────────────────────

@@ -110,6 +110,44 @@ Reply ONLY with valid JSON, no markdown, no explanation:
 }
 
 /**
+ * Evaluate a voice answer: compare what the user said to the target German word.
+ * Returns { status: 'correct'|'close'|'incorrect', feedback: string }
+ */
+export async function checkVoiceAnswer(targetWord, spokenWord) {
+  const target = targetWord.toLowerCase().trim()
+  const spoken = spokenWord.toLowerCase().trim()
+
+  if (target === spoken) return { status: 'correct', feedback: 'Отлично! Слово произнесено правильно.' }
+
+  const cacheKey = `voice_${target}_${spoken}`
+  if (memoryCache[cacheKey]) return memoryCache[cacheKey]
+
+  const prompt = `Ты — преподаватель немецкого языка. Ученик должен был произнести слово "${targetWord}". Распознаватель речи зафиксировал: "${spokenWord}".
+
+Оцени ответ одним из статусов:
+- correct — слово правильное (незначительная опечатка распознавания — всё равно correct)
+- close — почти правильно (похожее слово, 1-2 буквы или форма слова другая)
+- incorrect — совершенно другое слово
+
+Дай 1 короткое предложение фидбека на русском языке.
+
+ТОЛЬКО JSON без markdown: {"status":"correct|close|incorrect","feedback":"..."}`
+
+  try {
+    const text = await callGroq(prompt, 0.1)
+    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
+    const result = JSON.parse(cleaned)
+    memoryCache[cacheKey] = result
+    return result
+  } catch {
+    return {
+      status: 'incorrect',
+      feedback: `Вы сказали «${spokenWord}», а нужно «${targetWord}». Попробуйте ещё раз!`,
+    }
+  }
+}
+
+/**
  * Check a user's German sentence with AI feedback.
  * Returns { status: 'correct'|'minor_errors'|'incorrect', feedback: string }
  */
